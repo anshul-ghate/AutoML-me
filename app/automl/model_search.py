@@ -1,20 +1,17 @@
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from .hp_tuner import OptunaTuner
 
-class ModelSearch:
-    def __init__(self, estimator, param_grid, cv=3, scoring=None):
-        self.estimator = estimator
-        self.param_grid = param_grid
-        self.cv = cv
-        self.scoring = scoring
-        self.grid_search = None
+class AutoML:
+    def __init__(self, estimator_cls, param_space, tuner: OptunaTuner = None):
+        self.estimator_cls = estimator_cls
+        self.param_space = param_space
+        self.tuner = tuner or OptunaTuner()
 
-    def search(self, X, y):
-        self.grid_search = GridSearchCV(
-            self.estimator,
-            self.param_grid,
-            cv=self.cv,
-            scoring=self.scoring,
-            n_jobs=-1
-        )
-        self.grid_search.fit(X, y)
-        return self.grid_search.best_estimator_, self.grid_search.best_params_
+    def run(self, X, y, use_random_search=False, n_iter=10):
+        if use_random_search:
+            search = RandomizedSearchCV(self.estimator_cls(), self.param_space, n_iter=n_iter, cv=3, n_jobs=-1)
+            search.fit(X, y)
+            return search.best_estimator_, search.best_params_
+        else:
+            return self.tuner.tune(self.estimator_cls, self.param_space, X, y)
+

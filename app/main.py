@@ -2,12 +2,12 @@ from fastapi import FastAPI
 import os
 from dotenv import load_dotenv
 
+load_dotenv()
+
 from app.api.uploads import router as upload_router
 from app.api.auth import router as auth_router
 from app.api.genai import router as genai_router
 from app.api.automl import router as automl_router
-
-load_dotenv()
 
 app = FastAPI(
     title="AutoML Platform API",

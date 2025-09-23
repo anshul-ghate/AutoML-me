@@ -14,3 +14,5 @@ optuna
 lime
 joblib
 cachetools
+python-jose[cryptography]
+numpy

@@ -1,25 +1,14 @@
 import React, { useContext } from 'react';
-import { Route, Redirect, RouteProps } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 
-export const ProtectedRoute: React.FC<RouteProps> = ({ children, ...rest }) => {
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { token } = useContext(AuthContext);
 
-  return (
-    <Route
-      {...rest}
-      render={({ location }) =>
-        token ? (
-          children
-        ) : (
-          <Redirect
-            to={{
-              pathname: '/login',
-              state: { from: location }
-            }}
-          />
-        )
-      }
-    />
-  );
+  return token ? <>{children}</> : <Navigate to="/login" replace />;
 };
+

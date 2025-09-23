@@ -1,8 +1,6 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { useAxios } from '../hooks/useAxios';
-import jwtDecode from 'jwt-decode';
-// usage
-setUser(jwtDecode(token));
+import { jwtDecode } from 'jwt-decode'; // Fixed import
+import api from '../services/api';
 
 interface AuthContextProps {
   token: string | null;
@@ -17,18 +15,21 @@ export const AuthContext = createContext<AuthContextProps>({} as AuthContextProp
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
-  const axios = useAxios(token);
 
   useEffect(() => {
     const stored = localStorage.getItem('token');
     if (stored) {
-      setToken(stored);
-      setUser(jwtDecode(stored));
+      try {
+        setToken(stored);
+        setUser(jwtDecode(stored));
+      } catch (error) {
+        localStorage.removeItem('token');
+      }
     }
   }, []);
 
   const login = async (username: string, password: string) => {
-    const resp = await axios.post('/auth/login', { username, password });
+    const resp = await api.post('/auth/login', { username, password });
     const access = resp.data.access_token;
     localStorage.setItem('token', access);
     setToken(access);
@@ -36,7 +37,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const register = async (username: string, email: string, password: string) => {
-    await axios.post('/auth/register', { username, email, password });
+    await api.post('/auth/register', { username, email, password });
     // Optionally auto-login after registration
     await login(username, password);
   };
@@ -53,3 +54,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+

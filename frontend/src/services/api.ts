@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8050',  // Changed to 8050
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8050',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -16,7 +16,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle unauthorized responses
+// Handle 401 errors globally
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -29,3 +29,4 @@ api.interceptors.response.use(
 );
 
 export default api;
+

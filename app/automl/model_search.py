@@ -32,3 +32,4 @@ class AutoML:
         else:
             return self.tuner.tune(self.estimator_cls, self.param_space, X, y)
 
+ModelSearch = AutoML

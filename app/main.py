@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 import os
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -12,6 +13,13 @@ from app.api.automl import router as automl_router
 app = FastAPI(
     title="AutoML Platform API",
     version="0.1.0"
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8301", "http://127.0.0.1:8301"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include endpoints

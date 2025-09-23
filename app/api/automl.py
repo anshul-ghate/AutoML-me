@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, Any
 
 from app.automl.pipeline import Pipeline
-from app.automl.model_search import ModelSearch
+from app.automl.model_search import AutoML
 from app.automl.explainability import generate_shap_explanation
 from sklearn.datasets import load_iris
 from sklearn.ensemble import RandomForestClassifier

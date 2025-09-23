@@ -19,9 +19,9 @@ import {
   Typography,
   AppBar,
   Toolbar,
-  Button
+  Button,
+  Grid  // Fixed: Use the correct Grid import
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 
@@ -32,7 +32,7 @@ const Dashboard = () => {
     <Container maxWidth="lg">
       <AppBar position="static" sx={{ mb: 3 }}>
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             AutoML Platform
           </Typography>
           <Button color="inherit" onClick={logout}>
@@ -42,14 +42,14 @@ const Dashboard = () => {
       </AppBar>
 
       <Grid container spacing={3}>
-        <Grid xs={12} md={6}>
-          <Typography variant="h5" mb={2}>
+        <Grid item xs={12} md={6}>  {/* Fixed: Added 'item' prop */}
+          <Typography variant="h5" sx={{ mb: 2 }}>
             File Upload
           </Typography>
           <FileUpload />
         </Grid>
-        <Grid xs={12} md={6}>
-          <Typography variant="h5" mb={2}>
+        <Grid item xs={12} md={6}>  {/* Fixed: Added 'item' prop */}
+          <Typography variant="h5" sx={{ mb: 2 }}>
             AI Chat Assistant
           </Typography>
           <ChatWidget />
@@ -75,7 +75,7 @@ export const App = () => {
           <IconButton
             onClick={toggleTheme}
             color="inherit"
-            sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1300 }}
+            style={{ position: 'absolute', top: 16, right: 16, zIndex: 1300 }}
           >
             {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
           </IconButton>

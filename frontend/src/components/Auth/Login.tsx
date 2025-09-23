@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate } from 'react-router-dom'; // Added
 import { AuthContext } from '../../context/AuthContext';
 import { z } from 'zod';
 import {
@@ -13,24 +14,28 @@ import {
 import { Link as RouterLink } from 'react-router-dom';
 
 const loginSchema = z.object({
-  username: z.string().min(3),
-  password: z.string().min(6)
+  username: z.string().min(3, 'Username must be at least 3 characters'),
+  password: z.string().min(6, 'Password must be at least 6 characters')
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
 
 export const Login = () => {
   const { login } = useContext(AuthContext);
+  const navigate = useNavigate(); // Added
+  const [error, setError] = React.useState(''); // Added
+  
   const { register, handleSubmit, formState } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema)
   });
 
   const onSubmit = async (data: LoginForm) => {
     try {
+      setError('');
       await login(data.username, data.password);
-      window.location.href = '/';
+      navigate('/'); // Fixed: Use navigate instead of window.location
     } catch (error: any) {
-      alert(error.response?.data?.detail || 'Login failed');
+      setError(error.response?.data?.detail || 'Login failed');
     }
   };
 
@@ -64,7 +69,7 @@ export const Login = () => {
           fullWidth
           disabled={formState.isSubmitting}
         >
-          Login
+          {formState.isSubmitting ? 'Logging in...' : 'Login'}
         </Button>
       </form>
       <Typography align="center" mt={2}>
@@ -75,4 +80,3 @@ export const Login = () => {
     </Box>
   );
 };
-

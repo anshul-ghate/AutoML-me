@@ -3,7 +3,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthContext } from '../../context/AuthContext';
 import { z } from 'zod';
-import { Button, TextField, Box, Typography } from '@mui/material';
+import {
+  Button,
+  TextField,
+  Box,
+  Typography,
+  Link
+} from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 
 const loginSchema = z.object({
   username: z.string().min(3),
@@ -29,12 +36,43 @@ export const Login = () => {
 
   return (
     <Box maxWidth={400} mx="auto" mt={8}>
-      <Typography variant="h5" mb={2}>Login</Typography>
+      <Typography variant="h5" mb={2}>
+        Login
+      </Typography>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <TextField fullWidth label="Username" margin="normal" {...register('username')} error={!!formState.errors.username} helperText={formState.errors.username?.message} />
-        <TextField fullWidth type="password" label="Password" margin="normal" {...register('password')} error={!!formState.errors.password} helperText={formState.errors.password?.message} />
-        <Button type="submit" variant="contained" color="primary" fullWidth disabled={formState.isSubmitting}>Login</Button>
+        <TextField
+          fullWidth
+          label="Username"
+          margin="normal"
+          {...register('username')}
+          error={!!formState.errors.username}
+          helperText={formState.errors.username?.message}
+        />
+        <TextField
+          fullWidth
+          type="password"
+          label="Password"
+          margin="normal"
+          {...register('password')}
+          error={!!formState.errors.password}
+          helperText={formState.errors.password?.message}
+        />
+        <Button
+          type="submit"
+          variant="contained"
+          color="primary"
+          fullWidth
+          disabled={formState.isSubmitting}
+        >
+          Login
+        </Button>
       </form>
+      <Typography align="center" mt={2}>
+        <Link component={RouterLink} to="/register">
+          Don't have an account? Register
+        </Link>
+      </Typography>
     </Box>
   );
 };
+

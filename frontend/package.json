@@ -16,6 +16,7 @@
     "@types/node": "^16.18.126",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "@xyflow/react": "^12.8.5",
     "axios": "^1.12.2",
     "jwt-decode": "^4.0.0",
     "react": "^19.1.1",

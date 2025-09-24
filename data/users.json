@@ -1,0 +1,19 @@
+{
+  "users": [
+    {
+      "username": "devuser",
+      "email": "userdev@gmail.com",
+      "password_hash": "$2b$12$UvLxdVtn83xmg/pJqlCaVugzXEIUoelo9o3uADDNFRbad6QAMlEjC"
+    },
+    {
+      "username": "dev",
+      "email": "dev@automl.com",
+      "password_hash": "$2b$12$6DoWgR8XtNVuC1fMm4p1FeU88jsNU7BKoCDU5HTI6mj8lewa/W196"
+    },
+    {
+      "username": "admin",
+      "email": "admin@automl.me",
+      "password_hash": "$2b$12$9ySWErsI1SmI1IB1DXj9Q.VH0KqqBKzZ/rZXKY26t3HLmeCIbb7gG"
+    }
+  ]
+}

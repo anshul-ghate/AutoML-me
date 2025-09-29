@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useTranslation } from '../../i18n';
 import { useDropzone } from 'react-dropzone';
 import { 
   Box, 
@@ -17,6 +18,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import { ModalitiesSelector } from './ModalitiesSelector';
 import api from '../../services/api';
+import { logEvent } from '../../services/analytics';
 
 const DropZone = styled(Paper)(({ theme, isDragActive }: { theme: any, isDragActive: boolean }) => ({
   padding: theme.spacing(6),
@@ -33,6 +35,10 @@ const DropZone = styled(Paper)(({ theme, isDragActive }: { theme: any, isDragAct
     background: `linear-gradient(135deg, ${theme.palette.primary.light}05, ${theme.palette.primary.main}05)`,
     transform: 'translateY(-2px)',
     boxShadow: theme.shadows[8]
+  },
+  '&:focus-within': {
+    outline: `2px solid ${theme.palette.primary.main}`,
+    outlineOffset: '2px'
   }
 }));
 
@@ -45,10 +51,15 @@ const UploadButton = styled(Button)(({ theme }) => ({
     transform: 'translateY(-1px)',
     boxShadow: '0 8px 25px rgba(102, 126, 234, 0.4)'
   },
+  '&:focus': {
+    outline: `2px solid ${theme.palette.primary.main}`,
+    outlineOffset: '2px'
+  },
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
 }));
 
 export const FileUpload: React.FC = () => {
+  const { t } = useTranslation();
   const [modality, setModality] = useState('structured');
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
@@ -57,11 +68,19 @@ export const FileUpload: React.FC = () => {
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) {
-      setFile(accepted[0]);
+      const selectedFile = accepted[0];
+      setFile(selectedFile);
       setUploadStatus('idle');
       setProgress(0);
+
+      logEvent('file_selected', { 
+        modality, 
+        fileSize: selectedFile.size,
+        fileType: selectedFile.type,
+        fileName: selectedFile.name.split('.').pop()
+      });
     }
-  }, []);
+  }, [modality]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop,
@@ -80,11 +99,19 @@ export const FileUpload: React.FC = () => {
     
     setUploadStatus('uploading');
     setProgress(0);
+
+    logEvent('upload_started', { 
+      modality,
+      fileSize: file.size,
+      fileType: file.type
+    });
     
     try {
       const form = new FormData();
       form.append('file', file);
       const url = `/upload/${modality}`;
+      
+      const startTime = Date.now();
       
       await api.post(url, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -94,8 +121,18 @@ export const FileUpload: React.FC = () => {
         }
       });
       
+      const uploadTime = Date.now() - startTime;
+      
       setUploadStatus('success');
-      setUploadMessage(`${file.name} uploaded successfully!`);
+      setUploadMessage(t('upload_successful', { filename: file.name }));
+
+      logEvent('upload', { 
+        modality,
+        fileSize: file.size,
+        uploadTime,
+        success: true
+      });
+      
       setTimeout(() => {
         setFile(null);
         setProgress(0);
@@ -104,8 +141,24 @@ export const FileUpload: React.FC = () => {
       
     } catch (error: any) {
       setUploadStatus('error');
-      setUploadMessage(error.response?.data?.detail || 'Upload failed');
+      const errorMessage = error.response?.data?.detail || 'Unknown error';
+      setUploadMessage(t('upload_failed', { error: errorMessage }));
+
+      logEvent('upload', { 
+        modality,
+        fileSize: file.size,
+        success: false,
+        error: errorMessage
+      });
     }
+  };
+
+  const handleModalityChange = (newModality: string) => {
+    setModality(newModality);
+    logEvent('modality_changed', { 
+      from: modality,
+      to: newModality
+    });
   };
 
   const formatFileSize = (bytes: number) => {
@@ -118,17 +171,28 @@ export const FileUpload: React.FC = () => {
 
   return (
     <Stack spacing={4}>
-      <ModalitiesSelector value={modality} onChange={setModality} />
+      <ModalitiesSelector value={modality} onChange={handleModalityChange} />
       
-      <DropZone {...getRootProps()} isDragActive={isDragActive} elevation={0}>
-        <input {...getInputProps()} />
+      <DropZone 
+        {...getRootProps()} 
+        isDragActive={isDragActive} 
+        elevation={0}
+        role="button"
+        aria-label={t('file_input')}
+        tabIndex={0}
+      >
+        <input 
+          {...getInputProps()} 
+          aria-describedby="file-upload-description"
+        />
         <Stack spacing={3} alignItems="center">
           <CloudUploadIcon 
             sx={{ 
               fontSize: 64, 
               color: isDragActive ? 'primary.main' : 'text.secondary',
               transition: 'color 0.3s'
-            }} 
+            }}
+            aria-hidden="true"
           />
           {file ? (
             <Stack spacing={2} alignItems="center">
@@ -138,21 +202,26 @@ export const FileUpload: React.FC = () => {
                 variant="outlined"
                 color="primary"
                 sx={{ fontSize: '0.9rem', p: 1 }}
+                aria-label={`Selected file: ${file.name}`}
               />
               <Typography variant="body2" color="text.secondary">
-                {formatFileSize(file.size)} • Click to change file
+                {formatFileSize(file.size)} • {t('click_to_change')}
               </Typography>
             </Stack>
           ) : (
             <Stack spacing={1} alignItems="center">
               <Typography variant="h6" color="text.primary">
-                {isDragActive ? 'Drop your file here' : 'Drag & drop your file here'}
+                {t('drag_drop_file')}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                or click to browse your computer
+                {t('click_to_browse')}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Supports CSV, JSON, TXT, Images, Audio files
+              <Typography 
+                variant="caption" 
+                color="text.secondary"
+                id="file-upload-description"
+              >
+                {t('supported_formats')}
               </Typography>
             </Stack>
           )}
@@ -173,9 +242,10 @@ export const FileUpload: React.FC = () => {
                   background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)'
                 }
               }}
+              aria-label={`Upload progress: ${progress}%`}
             />
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Uploading... {progress}%
+              {t('uploading')} {progress}%
             </Typography>
           </Box>
         </Fade>
@@ -187,6 +257,8 @@ export const FileUpload: React.FC = () => {
             icon={<CheckCircleIcon />} 
             severity="success" 
             sx={{ borderRadius: 2 }}
+            role="status"
+            aria-live="polite"
           >
             {uploadMessage}
           </Alert>
@@ -195,7 +267,12 @@ export const FileUpload: React.FC = () => {
 
       {uploadStatus === 'error' && (
         <Fade in>
-          <Alert severity="error" sx={{ borderRadius: 2 }}>
+          <Alert 
+            severity="error" 
+            sx={{ borderRadius: 2 }}
+            role="alert"
+            aria-live="assertive"
+          >
             {uploadMessage}
           </Alert>
         </Fade>
@@ -208,8 +285,9 @@ export const FileUpload: React.FC = () => {
         startIcon={uploadStatus === 'uploading' ? undefined : <CloudUploadIcon />}
         fullWidth
         size="large"
+        aria-label={uploadStatus === 'uploading' ? `${t('uploading')} ${progress}%` : t('upload_file')}
       >
-        {uploadStatus === 'uploading' ? `Uploading... ${progress}%` : 'Upload File'}
+        {uploadStatus === 'uploading' ? `${t('uploading')} ${progress}%` : t('upload_file')}
       </UploadButton>
     </Stack>
   );

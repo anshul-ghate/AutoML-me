@@ -19,6 +19,7 @@ import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
 import api from '../../services/api';
+import { logEvent } from '../../services/analytics';
 
 const ChatContainer = styled(Paper)(({ theme }) => ({
   height: '600px',
@@ -45,7 +46,6 @@ const MessagesContainer = styled(Box)(({ theme }) => ({
   }
 }));
 
-// Fixed: Remove theme parameter requirement
 const MessageBubble = styled(Box)<{ isUser: boolean }>(({ theme, isUser }) => ({
   maxWidth: '80%',
   padding: theme.spacing(1.5, 2),
@@ -92,6 +92,8 @@ export const ChatWidget: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sessionStartTime = useRef(Date.now());
+  const messageCount = useRef(0);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -100,6 +102,21 @@ export const ChatWidget: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Log chat session start
+  useEffect(() => {
+    logEvent('chat_session_started', {
+      timestamp: sessionStartTime.current
+    });
+
+    // Log session end on unmount
+    return () => {
+      logEvent('chat_session_ended', {
+        sessionDuration: Date.now() - sessionStartTime.current,
+        messageCount: messageCount.current
+      });
+    };
+  }, []);
 
   const send = async () => {
     if (!input.trim() || loading) return;
@@ -111,10 +128,20 @@ export const ChatWidget: React.FC = () => {
     };
     
     setMessages(prev => [...prev, userMessage]);
+    const messageText = input.trim();
     setInput('');
     setLoading(true);
+    messageCount.current++;
+
+    // Log message sent
+    logEvent('chat_message_sent', {
+      messageLength: messageText.length,
+      messageNumber: messageCount.current,
+      sessionDuration: Date.now() - sessionStartTime.current
+    });
 
     try {
+      const startTime = Date.now();
       const response = await api.post('/genai/chat', {
         model_key: 'gpt-4o',
         messages: [...messages, userMessage].map(m => ({
@@ -123,13 +150,27 @@ export const ChatWidget: React.FC = () => {
         }))
       });
       
+      const responseTime = Date.now() - startTime;
+      const assistantContent = response.data.choices?.[0]?.message?.content || 'I apologize, but I encountered an error processing your request.';
+      
       const assistantMessage: Message = {
         role: 'assistant',
-        content: response.data.choices?.[0]?.message?.content || 'I apologize, but I encountered an error processing your request.',
+        content: assistantContent,
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Log successful chat interaction
+      logEvent('chat', {
+        success: true,
+        responseTime,
+        messageLength: messageText.length,
+        responseLength: assistantContent.length,
+        model: 'gpt-4o',
+        messageNumber: messageCount.current
+      });
+
     } catch (error: any) {
       const errorMessage: Message = {
         role: 'assistant',
@@ -137,6 +178,14 @@ export const ChatWidget: React.FC = () => {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
+
+      // Log chat error
+      logEvent('chat', {
+        success: false,
+        error: error.response?.data?.detail || 'Connection failed',
+        messageLength: messageText.length,
+        messageNumber: messageCount.current
+      });
     }
     
     setLoading(false);
@@ -146,6 +195,17 @@ export const ChatWidget: React.FC = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       send();
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+    
+    // Log typing activity (throttled)
+    if (e.target.value.length > 0 && e.target.value.length % 10 === 0) {
+      logEvent('chat_typing', {
+        inputLength: e.target.value.length
+      });
     }
   };
 
@@ -264,7 +324,7 @@ export const ChatWidget: React.FC = () => {
             variant="outlined"
             placeholder="Type your message..."
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             disabled={loading}
             sx={{

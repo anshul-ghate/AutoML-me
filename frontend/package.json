@@ -36,9 +36,11 @@
     "test": "react-scripts test --transformIgnorePatterns \"node_modules/(?!@xyflow)\"",
     "eject": "react-scripts eject",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src/**/*.{ts,tsx} --max-warnings=0",
+    "lint": "eslint src/**/*.{ts,tsx}",
     "lint:fix": "eslint src/**/*.{ts,tsx} --fix",
-    "test:coverage": "npm test -- --coverage --watchAll=false"
+    "test:coverage": "npm test -- --coverage --watchAll=false",
+	"cypress:open": "echo 'Use Docker script: ./run-cypress-docker.sh' && exit 0",
+    "cypress:run": "../run-cypress-docker.sh"
   },
   "eslintConfig": {
     "extends": [

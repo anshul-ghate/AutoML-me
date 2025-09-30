@@ -1,33 +1,58 @@
-import Plausible from 'plausible-tracker';
-
-// Initialize Plausible tracking
-const plausible = Plausible({
-  domain: process.env.REACT_APP_DOMAIN || 'localhost',
-  apiHost: process.env.REACT_APP_PLAUSIBLE_HOST || 'https://plausible.io',
-  trackLocalhost: process.env.NODE_ENV === 'development'
-});
+interface EventProperties {
+  [key: string]: string | number | boolean;
+}
 
 export const logPageview = () => {
-  plausible.trackPageview();
+  if (process.env.NODE_ENV === 'production' && window.plausible) {
+    window.plausible('pageview');
+  }
 };
 
-export const logEvent = (eventName: string, props?: Record<string, any>) => {
-  // Only track in production or when explicitly enabled
-  if (process.env.NODE_ENV === 'production' || process.env.REACT_APP_ANALYTICS_ENABLED === 'true') {
-    plausible.trackEvent(eventName, {
-      props: {
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        ...props
-      }
-    });
+export const logEvent = (name: string, props?: EventProperties) => {
+  if (process.env.NODE_ENV === 'production' && window.plausible) {
+    window.plausible(name, { props });
+  } else {
+    // Development logging
+    console.log(`📊 Analytics Event: ${name}`, props);
   }
+};
+
+// Enhanced error tracking
+export const logError = (error: Error, context?: string) => {
+  logEvent('error', {
+    message: error.message,
+    stack: error.stack?.substring(0, 500) || '',
+    context: context || 'unknown',
+    timestamp: new Date().toISOString()
+  });
   
-  // Log to console in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`📊 Analytics Event: ${eventName}`, props);
+  // Also log to console in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.error(`🚨 Error in ${context}:`, error);
   }
 };
 
-// Export the plausible instance for advanced usage
-export { plausible };
+// Performance tracking
+export const logPerformance = (name: string, duration: number, metadata?: EventProperties) => {
+  logEvent('performance', {
+    metric: name,
+    duration,
+    ...metadata
+  });
+};
+
+// User interaction tracking
+export const logUserAction = (action: string, details?: EventProperties) => {
+  logEvent('user_action', {
+    action,
+    timestamp: new Date().toISOString(),
+    ...details
+  });
+};
+
+// Extend window type for TypeScript
+declare global {
+  interface Window {
+    plausible?: (event: string, options?: { props?: EventProperties }) => void;
+  }
+}

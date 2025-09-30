@@ -1,14 +1,39 @@
 import React, { useContext } from 'react';
-import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
+import { Navigate, useLocation } from 'react-router-dom';
+import { Box, CircularProgress, Typography } from '@mui/material';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { token } = useContext(AuthContext);
+  const { token, isLoading } = useContext(AuthContext);
+  const location = useLocation();
 
-  return token ? <>{children}</> : <Navigate to="/login" replace />;
+  if (isLoading) {
+    return (
+      <Box 
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          gap: 2
+        }}
+      >
+        <CircularProgress size={48} />
+        <Typography variant="body1" color="text.secondary">
+          Loading...
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
 };
-

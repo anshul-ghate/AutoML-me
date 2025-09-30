@@ -125,19 +125,19 @@ const Dashboard = () => {
           >
             <Tab 
               icon={<CloudUploadIcon sx={{ fontSize: 28 }} />} 
-              label={t('data_upload')}
+              label={t('data_upload')} 
               id="tab-0"
               aria-controls="tabpanel-0"
             />
             <Tab 
               icon={<ChatIcon sx={{ fontSize: 28 }} />} 
-              label={t('ai_assistant')}
+              label={t('ai_assistant')} 
               id="tab-1"
               aria-controls="tabpanel-1"
             />
             <Tab 
               icon={<AccountTreeIcon sx={{ fontSize: 28 }} />} 
-              label={t('pipeline_builder')}
+              label={t('pipeline_builder')} 
               id="tab-2"
               aria-controls="tabpanel-2"
             />

@@ -1,14 +1,14 @@
 import React from 'react';
 import { 
   Fab, 
-  Tooltip, 
-  useTheme,
+  Tooltip,
   Box,
   Zoom 
 } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { styled } from '@mui/material/styles';
+import { logUserAction } from '../../services/analytics';
 
 const StyledFab = styled(Fab)(({ theme }) => ({
   position: 'fixed',
@@ -40,7 +40,14 @@ interface ThemeToggleProps {
 }
 
 export const ThemeToggle: React.FC<ThemeToggleProps> = ({ mode, onToggle }) => {
-  const theme = useTheme();
+  const handleToggle = () => {
+    logUserAction('theme_toggle', {
+      from: mode,
+      to: mode === 'light' ? 'dark' : 'light'
+    });
+    
+    onToggle();
+  };
 
   return (
     <Zoom in={true} timeout={500}>
@@ -52,7 +59,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ mode, onToggle }) => {
         >
           <StyledFab 
             size="medium" 
-            onClick={onToggle}
+            onClick={handleToggle}
             aria-label="toggle theme"
           >
             {mode === 'light' ? 

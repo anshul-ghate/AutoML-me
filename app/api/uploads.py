@@ -1,30 +1,90 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
-from app.storage.local_storage import LocalStorage
-from app.auth.jwt_auth import JWTBearer
+from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
+from fastapi.responses import JSONResponse
+from ..auth.jwt_handler import get_current_user
+import os
+import shutil
 
-router = APIRouter(prefix="/upload", tags=["upload"])
-storage = LocalStorage(base_path="data")
+router = APIRouter(prefix="/upload", tags=["uploads"])
 
-@router.post("/structured", dependencies=[Depends(JWTBearer())])
-async def upload_structured(file: UploadFile = File(...)):
-    content = await file.read()
-    path = storage.save_file(f"structured/{file.filename}", content)
-    return {"path": path}
+UPLOAD_DIRECTORY = "uploads"
+os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 
-@router.post("/text", dependencies=[Depends(JWTBearer())])
-async def upload_text(file: UploadFile = File(...)):
-    content = await file.read()
-    path = storage.save_file(f"text/{file.filename}", content)
-    return {"path": path}
+@router.post("/structured")
+async def upload_structured(
+    file: UploadFile = File(...),
+    current_user: str = Depends(get_current_user)
+):
+    if not file.filename.endswith(('.csv', '.json', '.xlsx')):
+        raise HTTPException(status_code=400, detail="Only CSV, JSON, and Excel files are allowed")
+    
+    file_path = os.path.join(UPLOAD_DIRECTORY, f"structured_{file.filename}")
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        return JSONResponse(
+            content={"message": f"File {file.filename} uploaded successfully", "path": file_path}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
 
-@router.post("/image", dependencies=[Depends(JWTBearer())])
-async def upload_image(file: UploadFile = File(...)):
-    content = await file.read()
-    path = storage.save_file(f"image/{file.filename}", content)
-    return {"path": path}
+@router.post("/text")
+async def upload_text(
+    file: UploadFile = File(...),
+    current_user: str = Depends(get_current_user)
+):
+    if not file.filename.endswith(('.txt', '.doc', '.docx')):
+        raise HTTPException(status_code=400, detail="Only text files are allowed")
+    
+    file_path = os.path.join(UPLOAD_DIRECTORY, f"text_{file.filename}")
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        return JSONResponse(
+            content={"message": f"File {file.filename} uploaded successfully", "path": file_path}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
 
-@router.post("/audio", dependencies=[Depends(JWTBearer())])
-async def upload_audio(file: UploadFile = File(...)):
-    content = await file.read()
-    path = storage.save_file(f"audio/{file.filename}", content)
-    return {"path": path}
+@router.post("/image")
+async def upload_image(
+    file: UploadFile = File(...),
+    current_user: str = Depends(get_current_user)
+):
+    if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+    
+    file_path = os.path.join(UPLOAD_DIRECTORY, f"image_{file.filename}")
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        return JSONResponse(
+            content={"message": f"File {file.filename} uploaded successfully", "path": file_path}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+
+@router.post("/audio")
+async def upload_audio(
+    file: UploadFile = File(...),
+    current_user: str = Depends(get_current_user)
+):
+    if not file.filename.lower().endswith(('.mp3', '.wav', '.flac', '.m4a')):
+        raise HTTPException(status_code=400, detail="Only audio files are allowed")
+    
+    file_path = os.path.join(UPLOAD_DIRECTORY, f"audio_{file.filename}")
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        return JSONResponse(
+            content={"message": f"File {file.filename} uploaded successfully", "path": file_path}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")

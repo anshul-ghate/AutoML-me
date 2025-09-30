@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 
 interface ModalitiesSelectorProps {
@@ -6,19 +7,23 @@ interface ModalitiesSelectorProps {
   onChange: (val: string) => void;
 }
 
-export const ModalitiesSelector: React.FC<ModalitiesSelectorProps> = ({ value, onChange }) => (
-  <FormControl fullWidth margin="normal">
-    <InputLabel id="modality-label">Modality</InputLabel>
-    <Select
-      labelId="modality-label"
-      value={value}
-      label="Modality"
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <MenuItem value="structured">Structured</MenuItem>
-      <MenuItem value="text">Text</MenuItem>
-      <MenuItem value="image">Image</MenuItem>
-      <MenuItem value="audio">Audio</MenuItem>
-    </Select>
-  </FormControl>
-);
+export const ModalitiesSelector: React.FC<ModalitiesSelectorProps> = ({ value, onChange }) => {
+  const { t } = useTranslation();
+  
+  return (
+    <FormControl fullWidth margin="normal">
+      <InputLabel id="modality-label">{t('modality')}</InputLabel>
+      <Select
+        labelId="modality-label"
+        value={value}
+        label={t('modality')}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <MenuItem value="structured">{t('structured')}</MenuItem>
+        <MenuItem value="text">{t('text')}</MenuItem>
+        <MenuItem value="image">{t('image')}</MenuItem>
+        <MenuItem value="audio">{t('audio')}</MenuItem>
+      </Select>
+    </FormControl>
+  );
+};

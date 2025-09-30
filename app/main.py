@@ -15,6 +15,7 @@ app = FastAPI(
     title="AutoML Platform API",
     version="0.1.0"
 )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8301", "http://127.0.0.1:8301"],

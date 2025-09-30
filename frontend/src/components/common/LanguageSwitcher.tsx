@@ -1,25 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
-  Select, 
+  Button, 
+  Menu, 
   MenuItem, 
-  FormControl, 
   Box,
-  Typography
+  Tooltip 
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import LanguageIcon from '@mui/icons-material/Language';
-import { useTranslation } from '../../i18n';
-
-const LanguageSelect = styled(Select)(({ theme }) => ({
-  minWidth: 120,
-  '& .MuiSelect-select': {
-    paddingY: theme.spacing(1),
-    paddingX: theme.spacing(1.5),
-    display: 'flex',
-    alignItems: 'center',
-    gap: theme.spacing(1)
-  }
-}));
+import { logUserAction } from '../../services/analytics';
 
 const languages = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
@@ -28,28 +16,61 @@ const languages = [
 
 export const LanguageSwitcher: React.FC = () => {
   const { i18n } = useTranslation();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  const handleLanguageChange = (event: any) => {
-    i18n.changeLanguage(event.target.value);
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
   };
 
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const changeLanguage = (lng: string) => {
+    const previousLanguage = i18n.language;
+    i18n.changeLanguage(lng);
+    
+    logUserAction('language_changed', {
+      from: previousLanguage,
+      to: lng
+    });
+    
+    handleClose();
+  };
+
+  const currentLanguage = languages.find(lang => lang.code === i18n.language) || languages[0];
+
   return (
-    <FormControl size="small">
-      <LanguageSelect
-        value={i18n.language}
-        onChange={handleLanguageChange}
-        displayEmpty
-        aria-label="Select language"
-      >
-        {languages.map((lang) => (
-          <MenuItem key={lang.code} value={lang.code}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <span>{lang.flag}</span>
-              <Typography variant="body2">{lang.name}</Typography>
-            </Box>
+    <Box>
+      <Tooltip title="Change language">
+        <Button 
+          onClick={handleClick} 
+          variant="outlined" 
+          size="small"
+          sx={{
+            minWidth: 60,
+            borderColor: 'rgba(255,255,255,0.3)',
+            color: 'inherit',
+            '&:hover': {
+              borderColor: 'rgba(255,255,255,0.8)',
+              bgcolor: 'rgba(255,255,255,0.1)'
+            }
+          }}
+        >
+          {currentLanguage.flag} {currentLanguage.code.toUpperCase()}
+        </Button>
+      </Tooltip>
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
+        {languages.map((language) => (
+          <MenuItem 
+            key={language.code}
+            onClick={() => changeLanguage(language.code)}
+            selected={language.code === i18n.language}
+          >
+            {language.flag} {language.name}
           </MenuItem>
         ))}
-      </LanguageSelect>
-    </FormControl>
+      </Menu>
+    </Box>
   );
 };

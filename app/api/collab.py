@@ -12,11 +12,17 @@ class ConnectionManager:
         self.active_connections.setdefault(pipeline_id, []).append(websocket)
 
     def disconnect(self, pipeline_id: str, websocket: WebSocket):
-        self.active_connections[pipeline_id].remove(websocket)
+        if pipeline_id in self.active_connections:
+            self.active_connections[pipeline_id].remove(websocket)
 
     async def broadcast(self, pipeline_id: str, message: dict):
-        for connection in self.active_connections.get(pipeline_id, []):
-            await connection.send_json(message)
+        if pipeline_id in self.active_connections:
+            for connection in self.active_connections[pipeline_id]:
+                try:
+                    await connection.send_json(message)
+                except:
+                    # Remove disconnected clients
+                    self.active_connections[pipeline_id].remove(connection)
 
 manager = ConnectionManager()
 

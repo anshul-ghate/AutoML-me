@@ -30,6 +30,7 @@ app.include_router(auth_router)
 app.include_router(genai_router)
 app.include_router(automl_router)
 app.include_router(collab_router)
+app.include_router(router)
 
 @app.get("/health")
 def health_check():

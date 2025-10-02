@@ -15,7 +15,7 @@ import { getTheme } from './theme/muiTheme';
 import { FileUpload } from './components/Upload/FileUpload';
 import { ChatWidget } from './components/Chat/ChatWidget';
 import { PipelineCanvas } from './components/PipelineBuilder/PipelineCanvas';
-import { TrainingPanel } from './components/Training/TrainingPanel';
+import { EnhancedTrainingPanel as TrainingPanel } from './components/Training/EnhancedTrainingPanel';
 import { 
   ThemeProvider, 
   CssBaseline, 
@@ -36,7 +36,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ChatIcon from '@mui/icons-material/Chat';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
-import AutoGraphIcon from '@mui/icons-material/AutoGraph'; 
+import PsychologyIcon from '@mui/icons-material/Psychology'; 
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -143,10 +143,10 @@ const Dashboard = () => {
               id="tab-2"
               aria-controls="tabpanel-2"
             />
-			<Tab
-			  icon={<AutoGraphIcon sx={{ fontSize: 28 }}/>} 
-			  label="Model Training"
-			  id="tab-3" 
+			<Tab 
+			  icon={<PsychologyIcon sx={{ fontSize: 28 }} />} 
+			  label="Model Training" 
+			  id="tab-3"
 			  aria-controls="tabpanel-3"
 			/>
           </Tabs>
@@ -197,7 +197,7 @@ const Dashboard = () => {
         </TabPanel>
 		
 		<TabPanel value={tabValue} index={3}>
-			<TrainingPanel />
+		  <TrainingPanel />
 		</TabPanel>
       </Container>
     </Box>

@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Box, 
   TextField, 
@@ -19,7 +18,6 @@ import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
 import api from '../../services/api';
-import { logEvent, logError, logUserAction } from '../../services/analytics';
 
 const ChatContainer = styled(Paper)(({ theme }) => ({
   height: '600px',
@@ -81,13 +79,10 @@ interface Message {
   role: 'user' | 'assistant'; 
   content: string; 
   timestamp: Date;
-  id: string;
 }
 
 export const ChatWidget: React.FC = () => {
-  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([{
-    id: '1',
     role: 'assistant',
     content: 'Hello! I\'m your AI assistant. How can I help you with your AutoML tasks today?',
     timestamp: new Date()
@@ -95,127 +90,54 @@ export const ChatWidget: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const sessionStartTime = useRef(Date.now());
-  const messageCount = useRef(0);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const scrollToBottom = useCallback(() => {
+  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
+  };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, scrollToBottom]);
-
-  // Session tracking - FIXED useEffect
-  useEffect(() => {
-    const startTime = sessionStartTime.current;
-    
-    logEvent('chat_session_started', {
-      timestamp: startTime
-    });
-    
-    return () => {
-      const sessionDuration = Date.now() - startTime;
-      const finalMessageCount = messageCount.current;
-      
-      logEvent('chat_session_ended', {
-        sessionDuration,
-        messageCount: finalMessageCount,
-        avgResponseTime: sessionDuration / Math.max(finalMessageCount, 1)
-      });
-    };
-  }, []); // Empty dependency array - values captured at setup time
+  }, [messages.length]);
 
   const send = async () => {
     if (!input.trim() || loading) return;
     
-    const messageText = input.trim();
-    const messageId = Date.now().toString();
     const userMessage: Message = { 
-      id: messageId,
       role: 'user', 
-      content: messageText,
+      content: input.trim(),
       timestamp: new Date()
     };
     
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
-    messageCount.current++;
-
-    // Cancel any previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    abortControllerRef.current = new AbortController();
-
-    logUserAction('chat_message_sent', {
-      messageLength: messageText.length,
-      messageNumber: messageCount.current
-    });
 
     try {
-      const startTime = Date.now();
       const response = await api.post('/genai/chat', {
         model_key: 'gpt-4o',
         messages: [...messages, userMessage].map(m => ({
           role: m.role,
           content: m.content
         }))
-      }, {
-        signal: abortControllerRef.current.signal,
-        timeout: 30000
       });
       
-      const responseTime = Date.now() - startTime;
-      const assistantContent = response.data.choices?.[0]?.message?.content || 'I apologize, but I encountered an error processing your request.';
-      
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: assistantContent,
+        content: response.data.choices?.[0]?.message?.content || 'I apologize, but I encountered an error processing your request.',
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, assistantMessage]);
-      
-      logEvent('chat_response_received', {
-        success: true,
-        responseTime,
-        messageLength: messageText.length,
-        responseLength: assistantContent.length,
-        model: 'gpt-4o',
-        messageNumber: messageCount.current
-      });
-      
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        return;
-      }
-      
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `I'm sorry, I encountered an error: ${error.response?.data?.detail || error.message || 'Connection failed'}`,
+        content: `I'm sorry, I encountered an error: ${error.response?.data?.detail || 'Connection failed'}`,
         timestamp: new Date()
       };
-      
       setMessages(prev => [...prev, errorMessage]);
-      
-      logEvent('chat_error', {
-        error: error.response?.data?.detail || error.message,
-        messageLength: messageText.length,
-        messageNumber: messageCount.current,
-        statusCode: error.response?.status
-      });
-      
-      logError(error, 'chat_api_call');
-    } finally {
-      setLoading(false);
-      abortControllerRef.current = null;
     }
+    
+    setLoading(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -224,18 +146,6 @@ export const ChatWidget: React.FC = () => {
       send();
     }
   };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
 
   return (
     <ChatContainer elevation={3}>
@@ -251,7 +161,7 @@ export const ChatWidget: React.FC = () => {
           </Avatar>
           <Box>
             <Typography variant="h6" sx={{ color: 'white', fontWeight: 600 }}>
-              {t('ai_assistant')}
+              AI Assistant
             </Typography>
             <Chip 
               label="Online" 
@@ -269,8 +179,8 @@ export const ChatWidget: React.FC = () => {
 
       <MessagesContainer>
         <List sx={{ p: 0 }}>
-          {messages.map((message) => (
-            <Fade in key={message.id} timeout={500}>
+          {messages.map((message, index) => (
+            <Fade in key={index} timeout={500}>
               <ListItem 
                 sx={{ 
                   justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start',
@@ -352,7 +262,7 @@ export const ChatWidget: React.FC = () => {
             variant="outlined"
             placeholder="Type your message..."
             value={input}
-            onChange={handleInputChange}
+            onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             disabled={loading}
             sx={{

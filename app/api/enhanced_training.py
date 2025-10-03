@@ -15,7 +15,7 @@ from sklearn.metrics import (
     accuracy_score, 
     precision_score, 
     recall_score, 
-    f1_score,  # Fixed: was f1_scor
+    f1_score,  
     mean_squared_error, 
     r2_score
 )

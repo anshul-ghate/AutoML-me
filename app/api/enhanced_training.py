@@ -1,11 +1,11 @@
-# Fixed enhanced_training.py - Complete Backend Solution
-
 from fastapi import APIRouter, UploadFile, File, BackgroundTasks, WebSocket, HTTPException, Query, Form
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from pydantic import BaseModel
 import pandas as pd
 import asyncio
 import json
 import io
+import os
 from typing import Optional
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -15,16 +15,25 @@ from sklearn.metrics import (
     accuracy_score, 
     precision_score, 
     recall_score, 
-    f1_score,  # Fixed: was f1_scor
+    f1_score,
     mean_squared_error, 
-    r2_score
+    r2_score,
+    roc_auc_score,
+    confusion_matrix,
+    roc_curve,
+    precision_recall_curve
 )
+import joblib
 
 router = APIRouter(prefix="/api/training", tags=["enhanced-training"])
 
 # Store training progress and results
 training_progress = {}
 training_results = {}
+
+class PredictRequest(BaseModel):
+    session_id: str
+    features: dict
 
 @router.post("/analyze")
 async def analyze_dataset(file: UploadFile = File(...)):
@@ -40,7 +49,7 @@ async def analyze_dataset(file: UploadFile = File(...)):
         if df.empty:
             raise HTTPException(status_code=400, detail="Uploaded file is empty")
         
-        # ✅ FIX: Improved data analysis structure to match frontend expectations
+        # Create comprehensive profile for frontend compatibility
         profile = {
             "shape": [len(df), len(df.columns)],
             "missing_values": df.isnull().sum().to_dict(),
@@ -105,10 +114,13 @@ async def train_model(
         content = await file.read()
         df = pd.read_csv(io.StringIO(content.decode('utf-8')))
         
+        # Generate session ID for this training
+        session_id = f"session_{hash(str(content) + target_column) % 100000}"
+        
         if target_column not in df.columns:
             raise HTTPException(status_code=400, detail=f"Target column '{target_column}' not found")
         
-        # ✅ FIX: Comprehensive data validation
+        # Comprehensive data validation
         if df.empty:
             raise HTTPException(status_code=400, detail="Dataset is empty")
         
@@ -119,7 +131,7 @@ async def train_model(
         X = df.drop(columns=[target_column])
         y = df[target_column]
         
-        # ✅ FIX: Robust preprocessing with error handling
+        # Robust preprocessing with error handling
         original_X_shape = X.shape
         
         # Handle missing values more robustly
@@ -133,30 +145,29 @@ async def train_model(
                 # Handle numeric missing values
                 if X[col].isnull().sum() > 0:
                     if X[col].dtype in ['int64', 'float64']:
-                        X[col] = X[col].fillna(X[col].median())  # Use median instead of mean for robustness
+                        X[col] = X[col].fillna(X[col].median())
                     else:
                         X[col] = X[col].fillna(0)
         
-        # ✅ FIX: Enhanced categorical encoding with validation
+        # Enhanced categorical encoding with validation
         label_encoders = {}
         categorical_cols = X.select_dtypes(include=['object']).columns
         
         for col in categorical_cols:
-            if X[col].nunique() > 1:  # Only encode if there's variation
+            if X[col].nunique() > 1:
                 le = LabelEncoder()
                 try:
                     X[col] = le.fit_transform(X[col].astype(str))
                     label_encoders[col] = le
                 except Exception as e:
-                    # If encoding fails, drop the column
                     X = X.drop(columns=[col])
                     print(f"Warning: Dropped column {col} due to encoding error: {e}")
         
-        # ✅ FIX: Validate that we have numeric features for training
+        # Validate that we have numeric features for training
         if X.select_dtypes(include=[np.number]).shape[1] == 0:
             raise HTTPException(status_code=400, detail="No numeric features available for training after preprocessing")
         
-        # ✅ FIX: Handle target variable preprocessing
+        # Handle target variable preprocessing
         original_y = y.copy()
         target_encoder = None
         is_classification = y.nunique() <= 10
@@ -165,14 +176,14 @@ async def train_model(
             target_encoder = LabelEncoder()
             y = pd.Series(target_encoder.fit_transform(y), index=y.index)
         
-        # ✅ FIX: Scale features after ensuring all are numeric
+        # Scale features after ensuring all are numeric
         scaler = StandardScaler()
         try:
             X_scaled = scaler.fit_transform(X)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Feature scaling failed: {str(e)}")
         
-        # ✅ FIX: Proper train-test split with validation
+        # Proper train-test split with validation
         try:
             X_train, X_test, y_train, y_test = train_test_split(
                 X_scaled, y, test_size=test_size, random_state=42, stratify=y if is_classification else None
@@ -183,7 +194,7 @@ async def train_model(
                 X_scaled, y, test_size=test_size, random_state=42
             )
         
-        # ✅ FIX: Model training with proper error handling
+        # Model training with proper error handling
         if is_classification:
             model = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
             
@@ -221,27 +232,25 @@ async def train_model(
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Regression model training failed: {str(e)}")
         
-        # ✅ FIX: CRITICAL - Fixed cross-validation to use consistent data
+        # CRITICAL - Fixed cross-validation to use consistent data
         try:
-            # Use FULL datasets for cross-validation, not split datasets
             cv_scores = cross_val_score(
                 model, 
-                X_scaled,  # Full scaled feature set
-                y,         # Full target set (NOT y_train!)
+                X_scaled,
+                y,
                 cv=cv_folds, 
                 scoring='accuracy' if is_classification else 'neg_mean_squared_error',
                 n_jobs=-1
             )
             
             if not is_classification:
-                cv_scores = -cv_scores  # Convert negative MSE to positive
+                cv_scores = -cv_scores
                 
         except Exception as e:
-            # Fallback: use simpler CV
             print(f"CV Warning: {e}")
-            cv_scores = np.array([0.8])  # Fallback score
+            cv_scores = np.array([0.8])
         
-        # ✅ FIX: Robust feature importance calculation
+        # Robust feature importance calculation
         try:
             if hasattr(model, 'feature_importances_'):
                 feature_importance = dict(zip(X.columns, model.feature_importances_))
@@ -252,8 +261,63 @@ async def train_model(
             print(f"Feature importance warning: {e}")
             top_features = []
         
-        # ✅ FIX: Comprehensive results structure
+        # ✅ NEW: Save model and extended evaluation metrics for Step 7
+        os.makedirs("models", exist_ok=True)
+        model_path = f"models/{session_id}_best_model.pkl"
+        
+        # Save model artifact with preprocessing objects
+        model_data = {
+            'model': model,
+            'scaler': scaler,
+            'label_encoders': label_encoders,
+            'target_encoder': target_encoder,
+            'feature_names': X.columns.tolist(),
+            'is_classification': is_classification
+        }
+        joblib.dump(model_data, model_path)
+        
+        # Calculate extended evaluation metrics
+        metrics_extended = {**metrics}
+        
+        if is_classification:
+            # Add ROC-AUC and confusion matrix for binary classification
+            if len(np.unique(y_test)) == 2:
+                try:
+                    y_proba = model.predict_proba(X_test)[:, 1]
+                    metrics_extended["roc_auc"] = float(roc_auc_score(y_test, y_proba))
+                    
+                    # ROC curve data
+                    fpr, tpr, _ = roc_curve(y_test, y_proba)
+                    metrics_extended["roc_curve"] = {
+                        "fpr": fpr.tolist(),
+                        "tpr": tpr.tolist()
+                    }
+                    
+                    # Precision-recall curve
+                    precision, recall, _ = precision_recall_curve(y_test, y_proba)
+                    metrics_extended["pr_curve"] = {
+                        "precision": precision.tolist(),
+                        "recall": recall.tolist()
+                    }
+                except:
+                    pass
+            
+            # Confusion matrix
+            try:
+                cm = confusion_matrix(y_test, y_pred)
+                metrics_extended["confusion_matrix"] = cm.tolist()
+                metrics_extended["class_labels"] = [str(cls) for cls in np.unique(y_test)]
+            except:
+                pass
+        
+        # Save extended metrics
+        metrics_path = f"models/{session_id}_metrics.json"
+        with open(metrics_path, "w") as mf:
+            json.dump(metrics_extended, mf)
+        
+        # Comprehensive results structure
         results = {
+            "session_id": session_id,
             "training_config": {
                 "models_trained": 1,
                 "successful_models": 1,
@@ -265,7 +329,8 @@ async def train_model(
             "feature_engineering": {
                 "original_features": original_X_shape[1],
                 "final_features": len(X.columns),
-                "top_features": [{"name": name, "importance": float(imp)} for name, imp in top_features]
+                "top_features": [{"name": name, "importance": float(imp)} for name, imp in top_features],
+                "feature_names": X.columns.tolist()
             },
             "best_model": {
                 "name": model_name,
@@ -275,16 +340,106 @@ async def train_model(
                 "data_quality_score": round((1 - df.isnull().sum().sum() / (len(df) * len(df.columns))) * 100, 1),
                 "train_size": len(X_train),
                 "test_size": len(X_test)
-            }
+            },
+            "model_path": model_path,
+            "metrics_path": metrics_path
         }
+        
+        # Store results for later retrieval
+        training_results[session_id] = results
         
         return JSONResponse(content=results)
         
     except HTTPException:
-        raise  # Re-raise HTTP exceptions
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Training failed: {str(e)}")
 
+# ✅ NEW: Step 7 endpoints for model evaluation and export
+@router.get("/export/model/{session_id}")
+async def export_model(session_id: str):
+    """Download trained model artifact"""
+    model_path = f"models/{session_id}_best_model.pkl"
+    if not os.path.exists(model_path):
+        raise HTTPException(status_code=404, detail="Model artifact not found")
+    return FileResponse(model_path, filename=f"model_{session_id}.pkl")
+
+@router.get("/evaluate/{session_id}")
+async def get_evaluation_metrics(session_id: str):
+    """Get detailed evaluation metrics including ROC curves, confusion matrix"""
+    metrics_path = f"models/{session_id}_metrics.json"
+    if not os.path.exists(metrics_path):
+        raise HTTPException(status_code=404, detail="Evaluation metrics not found")
+    
+    with open(metrics_path, 'r') as f:
+        metrics = json.load(f)
+    
+    return JSONResponse(content=metrics)
+
+@router.post("/predict")
+async def predict_with_model(request: PredictRequest):
+    """Make predictions using trained model"""
+    model_path = f"models/{request.session_id}_best_model.pkl"
+    
+    if not os.path.exists(model_path):
+        raise HTTPException(status_code=404, detail="Model not found")
+    
+    try:
+        # Load model and preprocessing objects
+        model_data = joblib.load(model_path)
+        model = model_data['model']
+        scaler = model_data['scaler']
+        label_encoders = model_data['label_encoders']
+        target_encoder = model_data['target_encoder']
+        feature_names = model_data['feature_names']
+        is_classification = model_data['is_classification']
+        
+        # Create DataFrame with expected features
+        input_df = pd.DataFrame([request.features])
+        
+        # Ensure all required features are present
+        for feature in feature_names:
+            if feature not in input_df.columns:
+                raise HTTPException(status_code=400, detail=f"Missing feature: {feature}")
+        
+        # Reorder columns to match training data
+        input_df = input_df[feature_names]
+        
+        # Apply same preprocessing as training
+        for col in input_df.columns:
+            if col in label_encoders:
+                try:
+                    input_df[col] = label_encoders[col].transform(input_df[col].astype(str))
+                except:
+                    # Handle unseen categories
+                    input_df[col] = 0
+        
+        # Scale features
+        input_scaled = scaler.transform(input_df)
+        
+        # Make prediction
+        predictions = model.predict(input_scaled)
+        
+        result = {"predictions": predictions.tolist()}
+        
+        # Add probabilities for classification
+        if is_classification and hasattr(model, 'predict_proba'):
+            probabilities = model.predict_proba(input_scaled)
+            result["probabilities"] = probabilities.tolist()
+            
+            # Decode target if it was encoded
+            if target_encoder:
+                decoded_predictions = target_encoder.inverse_transform(predictions.astype(int))
+                result["predicted_classes"] = decoded_predictions.tolist()
+        
+        return JSONResponse(content=result)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Prediction failed: {str(e)}")
+
+# Keep existing endpoints for backward compatibility
 @router.post("/feature-engineer")
 async def auto_feature_engineering(
     file: UploadFile = File(...), 
@@ -295,7 +450,7 @@ async def auto_feature_engineering(
     """Advanced automated feature engineering with customizable options"""
     try:
         content = await file.read()
-        df = pd.read_csv(io.StringIO(content.decode('utf-8')))  # ✅ FIX: Use StringIO consistently
+        df = pd.read_csv(io.StringIO(content.decode('utf-8')))
         
         if df.empty:
             raise HTTPException(status_code=400, detail="Uploaded file is empty")
@@ -329,9 +484,6 @@ async def auto_feature_engineering(
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error in feature engineering: {str(e)}")
-
-# Keep all your existing endpoints below (train-models, progress, results, websocket, cleanup)
-# [Rest of the endpoints remain the same as they were working correctly]
 
 @router.post("/train-models")
 async def train_advanced_models(
@@ -379,7 +531,6 @@ async def run_comprehensive_training(
 ):
     """Comprehensive background training with detailed progress tracking"""
     try:
-        # Simplified training for demo
         training_progress[session_id].update({
             "status": "loading_data",
             "progress": 20,
@@ -481,6 +632,18 @@ async def cleanup_session(session_id: str):
     if session_id in training_results:
         del training_results[session_id]
         deleted_items.append("results")
+    
+    # Clean up model files
+    model_path = f"models/{session_id}_best_model.pkl"
+    metrics_path = f"models/{session_id}_metrics.json"
+    
+    if os.path.exists(model_path):
+        os.remove(model_path)
+        deleted_items.append("model")
+    
+    if os.path.exists(metrics_path):
+        os.remove(metrics_path)
+        deleted_items.append("metrics")
     
     return {
         "status": "success",

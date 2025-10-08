@@ -12,6 +12,8 @@ from app.api.automl import router as automl_router
 from app.api.collab import router as collab_router
 from app.api.enhanced_training import router as enhanced_training_router
 from app.api.automl_training import router as training_router
+from app.api.enterprise_training import router as enterprise_router
+
 
 app = FastAPI(
     title="AutoML Platform API",
@@ -34,6 +36,7 @@ app.include_router(automl_router)
 app.include_router(collab_router)
 app.include_router(enhanced_training_router)
 app.include_router(training_router, prefix="/api/train", tags=["training"])
+app.include_router(enterprise_router)
 
 @app.get("/health")
 def health_check():

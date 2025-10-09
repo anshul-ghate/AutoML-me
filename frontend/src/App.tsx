@@ -5,6 +5,7 @@ import {
   Routes,
   Route,
 } from 'react-router-dom';
+import { CustomThemeProvider } from './theme/CustomThemeProvider';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { Login } from './components/Auth/Login';
 import { Register } from './components/Auth/Register';
@@ -213,24 +214,26 @@ export const App = () => {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <Router>
-          <ThemeToggle mode={mode} onToggle={toggleTheme} />
-          
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
+	<CustomThemeProvider>
+		<ThemeProvider theme={theme}>
+		  <CssBaseline />
+		  <AuthProvider>
+			<Router>
+			  <ThemeToggle mode={mode} onToggle={toggleTheme} />
+			  
+			  <Routes>
+				<Route path="/login" element={<Login />} />
+				<Route path="/register" element={<Register />} />
+				<Route path="/" element={
+				  <ProtectedRoute>
+					<Dashboard />
+				  </ProtectedRoute>
+				} />
+			  </Routes>
+			</Router>
+		  </AuthProvider>
+		</ThemeProvider>
+	</CustomThemeProvider>
   );
 };
 

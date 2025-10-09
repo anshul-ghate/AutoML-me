@@ -1,5 +1,9 @@
 import { createTheme, ThemeOptions } from '@mui/material/styles';
 import { alpha } from '@mui/material/styles';
+// Theme context provider component
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { ThemeProvider } from '@mui/material/styles';
+import { CssBaseline } from '@mui/material';
 
 export interface CustomThemeOptions extends ThemeOptions {
   isDark?: boolean;
@@ -175,11 +179,6 @@ export const createCustomTheme = (isDark: boolean = false): CustomThemeOptions =
     isDark,
   };
 };
-
-// Theme context provider component
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { ThemeProvider } from '@mui/material/styles';
-import { CssBaseline } from '@mui/material';
 
 interface ThemeContextType {
   isDark: boolean;

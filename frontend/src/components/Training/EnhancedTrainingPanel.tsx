@@ -1313,135 +1313,13 @@ export const EnhancedTrainingPanel: React.FC = () => {
         </Box>
       </Paper>
 
-      // {/* ✅ UPDATED: Evaluation Dialog with Stack/Box instead of Grid */}
-      // <Dialog open={showEvalDialog} onClose={() => setShowEvalDialog(false)} maxWidth="lg" fullWidth>
-        // <DialogTitle>
-          // <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            // <AssessmentIcon sx={{ mr: 1 }} />
-            // Detailed Model Evaluation
-          // </Box>
-        // </DialogTitle>
-        // <DialogContent>
-          // {evalMetrics && (
-            // <Box>
-              // <Typography variant="h6" gutterBottom>Extended Metrics</Typography>
-              
-              // {/* ✅ FIX: Using Stack/Box instead of Grid for better compatibility */}
-              // <Box sx={{ mb: 3 }}>
-                // {evalMetrics.roc_auc && (
-                  // <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
-                    // <Card sx={{ flex: 1, minWidth: 200 }}>
-                      // <CardContent sx={{ textAlign: 'center' }}>
-                        // <Typography variant="h4" color="success.main">
-                          // {(evalMetrics.roc_auc * 100).toFixed(1)}%
-                        // </Typography>
-                        // <Typography variant="body2" color="text.secondary">
-                          // ROC-AUC Score
-                        // </Typography>
-                      // </CardContent>
-                    // </Card>
-                    
-                    // {evalMetrics.confusion_matrix && (
-                      // <Card sx={{ flex: 2 }}>
-                        // <CardContent>
-                          // <Typography variant="h6" gutterBottom>Confusion Matrix</Typography>
-                          // <Paper sx={{ p: 2, overflow: 'auto' }}>
-                            // <Table size="small">
-                              // <TableHead>
-                                // <TableRow>
-                                  // <TableCell>Predicted →</TableCell>
-                                  // {evalMetrics.class_labels?.map((label: string) => (
-                                    // <TableCell key={label} align="center">{label}</TableCell>
-                                  // ))}
-                                // </TableRow>
-                              // </TableHead>
-                              // <TableBody>
-                                // {evalMetrics.confusion_matrix.map((row: number[], rowIdx: number) => (
-                                  // <TableRow key={rowIdx}>
-                                    // <TableCell>{evalMetrics.class_labels?.[rowIdx] || `Class ${rowIdx}`}</TableCell>
-                                    // {row.map((value: number, colIdx: number) => (
-                                      // <TableCell key={colIdx} align="center">
-                                        // <Chip 
-                                          // label={value} 
-                                          // color={rowIdx === colIdx ? 'success' : 'default'}
-                                          // size="small"
-                                        // />
-                                      // </TableCell>
-                                    // ))}
-                                  // </TableRow>
-                                // ))}
-                              // </TableBody>
-                            // </Table>
-                          // </Paper>
-                        // </CardContent>
-                      // </Card>
-                    // )}
-                  // </Stack>
-                // )}
-                
-                // {!evalMetrics.roc_auc && evalMetrics.confusion_matrix && (
-                  // <Card sx={{ mb: 2 }}>
-                    // <CardContent>
-                      // <Typography variant="h6" gutterBottom>Confusion Matrix</Typography>
-                      // <Paper sx={{ p: 2, overflow: 'auto' }}>
-                        // <Table size="small">
-                          // <TableHead>
-                            // <TableRow>
-                              // <TableCell>Predicted →</TableCell>
-                              // {evalMetrics.class_labels?.map((label: string) => (
-                                // <TableCell key={label} align="center">{label}</TableCell>
-                              // ))}
-                            // </TableRow>
-                          // </TableHead>
-                          // <TableBody>
-                            // {evalMetrics.confusion_matrix.map((row: number[], rowIdx: number) => (
-                              // <TableRow key={rowIdx}>
-                                // <TableCell>{evalMetrics.class_labels?.[rowIdx] || `Class ${rowIdx}`}</TableCell>
-                                // {row.map((value: number, colIdx: number) => (
-                                  // <TableCell key={colIdx} align="center">
-                                    // <Chip 
-                                      // label={value} 
-                                      // color={rowIdx === colIdx ? 'success' : 'default'}
-                                      // size="small"
-                                    // />
-                                  // </TableCell>
-                                // ))}
-                              // </TableRow>
-                            // ))}
-                          // </TableBody>
-                        // </Table>
-                      // </Paper>
-                    // </CardContent>
-                  // </Card>
-                // )}
-              // </Box>
-
-              // <Accordion>
-                // <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  // <Typography>Raw Metrics Data</Typography>
-                // </AccordionSummary>
-                // <AccordionDetails>
-                  // <Box component="pre" sx={{ 
-                    // bgcolor: 'grey.100', 
-                    // p: 2, 
-                    // borderRadius: 1,
-                    // overflow: 'auto',
-                    // fontSize: '0.875rem'
-                  // }}>
-                    // {JSON.stringify(evalMetrics, null, 2)}
-                  // </Box>
-                // </AccordionDetails>
-              // </Accordion>
-            // </Box>
-          // )}
-        // </DialogContent>
-        // <DialogActions>
-          // <Button onClick={() => setShowEvalDialog(false)}>Close</Button>
-        // </DialogActions>
-      // </Dialog>
-	  
-	  {/* ✅ ENHANCED: Evaluation Dialog with Interactive Charts */}
-      <Dialog open={showEvalDialog} onClose={() => setShowEvalDialog(false)} maxWidth="xl" fullWidth>
+            {/* ✅ CORRECTED: Evaluation Dialog */}
+      <Dialog 
+        open={showEvalDialog} 
+        onClose={() => setShowEvalDialog(false)} 
+        maxWidth="xl" 
+        fullWidth
+      >
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <AssessmentIcon sx={{ mr: 1 }} />
@@ -1449,102 +1327,80 @@ export const EnhancedTrainingPanel: React.FC = () => {
           </Box>
         </DialogTitle>
         <DialogContent>
-          {evalMetrics && (
+          {evalMetrics ? (
             <Box>
-              <Typography variant="h6" gutterBottom>Extended Metrics</Typography>
+              <Typography variant="h6" gutterBottom>
+                📊 Performance Metrics
+              </Typography>
               
-              <Box sx={{ mb: 3 }}>
-                {evalMetrics.roc_auc && (
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
-                    <Card sx={{ flex: 1, minWidth: 200 }}>
-                      <CardContent sx={{ textAlign: 'center' }}>
-                        <Typography variant="h4" color="success.main">
-                          {(evalMetrics.roc_auc * 100).toFixed(1)}%
+              {/* ROC-AUC Display */}
+              {evalMetrics.roc_auc && (
+                <Card sx={{ mb: 2 }}>
+                  <CardContent>
+                    <Stack direction="row" alignItems="center" spacing={2}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body1" fontWeight="bold">
+                          ROC-AUC Score: {(evalMetrics.roc_auc * 100).toFixed(1)}%
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          ROC-AUC Score
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                    
-                    {evalMetrics.confusion_matrix && (
-                      <Card sx={{ flex: 2 }}>
-                        <CardContent>
-                          <Typography variant="h6" gutterBottom>Confusion Matrix</Typography>
-                          <Paper sx={{ p: 2, overflow: 'auto' }}>
-                            <Table size="small">
-                              <TableHead>
-                                <TableRow>
-                                  <TableCell>Predicted →</TableCell>
-                                  {evalMetrics.class_labels?.map((label: string) => (
-                                    <TableCell key={label} align="center">{label}</TableCell>
-                                  ))}
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {evalMetrics.confusion_matrix.map((row: number[], rowIdx: number) => (
-                                  <TableRow key={rowIdx}>
-                                    <TableCell>{evalMetrics.class_labels?.[rowIdx] || `Class ${rowIdx}`}</TableCell>
-                                    {row.map((value: number, colIdx: number) => (
-                                      <TableCell key={colIdx} align="center">
-                                        <Chip 
-                                          label={value} 
-                                          color={rowIdx === colIdx ? 'success' : 'default'}
-                                          size="small"
-                                        />
-                                      </TableCell>
-                                    ))}
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </Paper>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </Stack>
-                )}
-                
-                {!evalMetrics.roc_auc && evalMetrics.confusion_matrix && (
-                  <Card sx={{ mb: 2 }}>
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom>Confusion Matrix</Typography>
-                      <Paper sx={{ p: 2, overflow: 'auto' }}>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Predicted →</TableCell>
-                              {evalMetrics.class_labels?.map((label: string) => (
-                                <TableCell key={label} align="center">{label}</TableCell>
+                        <LinearProgress
+                          variant="determinate"
+                          value={evalMetrics.roc_auc * 100}
+                          color="success"
+                          sx={{ mt: 1, height: 8, borderRadius: 4 }}
+                        />
+                      </Box>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Confusion Matrix */}
+              {evalMetrics.confusion_matrix && evalMetrics.class_labels && (
+                <Card sx={{ mb: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      🎯 Confusion Matrix
+                    </Typography>
+                    <Box sx={{ overflow: 'auto' }}>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell><strong>Actual →</strong></TableCell>
+                            {evalMetrics.class_labels.map((label: string) => (
+                              <TableCell key={label} align="center">
+                                <strong>{label}</strong>
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {evalMetrics.confusion_matrix.map((row: number[], rowIdx: number) => (
+                            <TableRow key={rowIdx}>
+                              <TableCell>
+                                <strong>{evalMetrics.class_labels[rowIdx]}</strong>
+                              </TableCell>
+                              {row.map((value: number, colIdx: number) => (
+                                <TableCell key={colIdx} align="center">
+                                  <Chip 
+                                    label={value} 
+                                    color={rowIdx === colIdx ? 'success' : 'default'}
+                                    size="small"
+                                  />
+                                </TableCell>
                               ))}
                             </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {evalMetrics.confusion_matrix.map((row: number[], rowIdx: number) => (
-                              <TableRow key={rowIdx}>
-                                <TableCell>{evalMetrics.class_labels?.[rowIdx] || `Class ${rowIdx}`}</TableCell>
-                                {row.map((value: number, colIdx: number) => (
-                                  <TableCell key={colIdx} align="center">
-                                    <Chip 
-                                      label={value} 
-                                      color={rowIdx === colIdx ? 'success' : 'default'}
-                                      size="small"
-                                    />
-                                  </TableCell>
-                                ))}
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </Paper>
-                    </CardContent>
-                  </Card>
-                )}
-              </Box>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </Box>
+                  </CardContent>
+                </Card>
+              )}
 
+              {/* Raw Metrics Accordion */}
               <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography>Raw Metrics Data</Typography>
+                  <Typography>📋 Detailed Metrics Data</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   <Box component="pre" sx={{ 
@@ -1552,101 +1408,36 @@ export const EnhancedTrainingPanel: React.FC = () => {
                     p: 2, 
                     borderRadius: 1,
                     overflow: 'auto',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontFamily: 'monospace'
                   }}>
                     {JSON.stringify(evalMetrics, null, 2)}
                   </Box>
                 </AccordionDetails>
               </Accordion>
             </Box>
+          ) : (
+            <Typography>No evaluation metrics available</Typography>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowEvalDialog(false)}>Close</Button>
+          <Button onClick={() => setShowEvalDialog(false)}>
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
 
-      // {/* ✅ NEW: Prediction Dialog */}
-      // <Dialog open={showPredictDialog} onClose={() => setShowPredictDialog(false)} maxWidth="md" fullWidth>
-        // <DialogTitle>
-          // <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            // <PredictiveAnalyticsIcon sx={{ mr: 1 }} />
-            // Test Model Prediction
-          // </Box>
-        // </DialogTitle>
-        // <DialogContent>
-          // <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            // Enter values for each feature to get a prediction from your trained model.
-          // </Typography>
-          
-          // <Box sx={{ mb: 3 }}>
-            // {Object.keys(predictInputs).map((feature) => (
-              // <TextField
-                // key={feature}
-                // label={feature}
-                // value={predictInputs[feature] || ''}
-                // onChange={(e) => setPredictInputs({ ...predictInputs, [feature]: e.target.value })}
-                // fullWidth
-                // margin="normal"
-                // type="number"
-                // helperText="Enter numeric value"
-              // />
-            // ))}
-          // </Box>
-          
-          // {predictResult && (
-            // <Card sx={{ mt: 2, bgcolor: 'success.light' }}>
-              // <CardContent>
-                // <Typography variant="h6" gutterBottom>
-                  // 🎯 Prediction Results
-                // </Typography>
-                // <Typography variant="body1">
-                  // <strong>Predicted Value:</strong> {predictResult.predictions?.[0] || 'N/A'}
-                // </Typography>
-                // {predictResult.predicted_classes && (
-                  // <Typography variant="body1">
-                    // <strong>Predicted Class:</strong> {predictResult.predicted_classes[0]}
-                  // </Typography>
-                // )}
-                // {predictResult.probabilities && (
-                  // <Box sx={{ mt: 1 }}>
-                    // <Typography variant="body2" color="text.secondary">
-                      // Class Probabilities:
-                    // </Typography>
-                    // {predictResult.probabilities[0].map((prob: number, idx: number) => (
-                      // <Chip
-                        // key={idx}
-                        // label={`Class ${idx}: ${(prob * 100).toFixed(1)}%`}
-                        // size="small"
-                        // sx={{ mr: 1, mt: 0.5 }}
-                        // color={prob > 0.5 ? 'success' : 'default'}
-                      // />
-                    // ))}
-                  // </Box>
-                // )}
-              // </CardContent>
-            // </Card>
-          // )}
-        // </DialogContent>
-        // <DialogActions>
-          // <Button onClick={() => setShowPredictDialog(false)}>Close</Button>
-          // <Button
-            // onClick={handlePredict}
-            // variant="contained"
-            // disabled={predictLoading || Object.values(predictInputs).some(v => v === '')}
-            // startIcon={predictLoading ? <CircularProgress size={16} /> : <PredictiveAnalyticsIcon />}
-          // >
-            // {predictLoading ? 'Predicting...' : 'Get Prediction'}
-          // </Button>
-        // </DialogActions>
-      // </Dialog>
-	  
-	   {/* ✅ ENHANCED: Smart Prediction Dialog */}
-      <Dialog open={showPredictDialog} onClose={() => setShowPredictDialog(false)} maxWidth="lg" fullWidth>
+      {/* ✅ CORRECTED: Smart Prediction Dialog */}
+      <Dialog 
+        open={showPredictDialog} 
+        onClose={() => setShowPredictDialog(false)} 
+        maxWidth="lg" 
+        fullWidth
+      >
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <PredictiveAnalyticsIcon sx={{ mr: 1 }} />
-            Smart Model Prediction
+            Model Prediction
           </Box>
         </DialogTitle>
         <DialogContent>
@@ -1654,23 +1445,26 @@ export const EnhancedTrainingPanel: React.FC = () => {
             Enter values for each feature to get a prediction from your trained model.
           </Typography>
           
-          <Box sx={{ mb: 3 }}>
+          <Stack spacing={2}>
             {Object.keys(predictInputs).map((feature) => (
               <TextField
                 key={feature}
                 label={feature}
                 value={predictInputs[feature] || ''}
-                onChange={(e) => setPredictInputs({ ...predictInputs, [feature]: e.target.value })}
+                onChange={(e) => setPredictInputs({ 
+                  ...predictInputs, 
+                  [feature]: e.target.value 
+                })}
                 fullWidth
-                margin="normal"
                 type="number"
+                size="small"
                 helperText="Enter numeric value"
               />
             ))}
-          </Box>
+          </Stack>
           
           {predictResult && (
-            <Card sx={{ mt: 2, bgcolor: 'success.light' }}>
+            <Card sx={{ mt: 3, bgcolor: 'success.light' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   🎯 Prediction Results
@@ -1679,24 +1473,25 @@ export const EnhancedTrainingPanel: React.FC = () => {
                   <strong>Predicted Value:</strong> {predictResult.predictions?.[0] || 'N/A'}
                 </Typography>
                 {predictResult.predicted_classes && (
-                  <Typography variant="body1">
+                  <Typography variant="body1" sx={{ mt: 1 }}>
                     <strong>Predicted Class:</strong> {predictResult.predicted_classes[0]}
                   </Typography>
                 )}
                 {predictResult.probabilities && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
                       Class Probabilities:
                     </Typography>
-                    {predictResult.probabilities[0].map((prob: number, idx: number) => (
-                      <Chip
-                        key={idx}
-                        label={`Class ${idx}: ${(prob * 100).toFixed(1)}%`}
-                        size="small"
-                        sx={{ mr: 1, mt: 0.5 }}
-                        color={prob > 0.5 ? 'success' : 'default'}
-                      />
-                    ))}
+                    <Stack direction="row" spacing={1} flexWrap="wrap">
+                      {predictResult.probabilities[0].map((prob: number, idx: number) => (
+                        <Chip
+                          key={idx}
+                          label={`Class ${idx}: ${(prob * 100).toFixed(1)}%`}
+                          size="small"
+                          color={prob > 0.5 ? 'success' : 'default'}
+                        />
+                      ))}
+                    </Stack>
                   </Box>
                 )}
               </CardContent>
@@ -1704,7 +1499,9 @@ export const EnhancedTrainingPanel: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowPredictDialog(false)}>Close</Button>
+          <Button onClick={() => setShowPredictDialog(false)}>
+            Close
+          </Button>
           <Button
             onClick={handlePredict}
             variant="contained"
@@ -1737,3 +1534,4 @@ export const EnhancedTrainingPanel: React.FC = () => {
 
 export const TrainingPanel = EnhancedTrainingPanel;
 export default EnhancedTrainingPanel;
+

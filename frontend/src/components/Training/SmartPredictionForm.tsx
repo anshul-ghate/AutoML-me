@@ -5,93 +5,52 @@ import {
   Button, 
   Typography, 
   Alert,
-  Tooltip,
-  IconButton,
-  Chip,
   Stack,
   Card,
   CardContent,
-  LinearProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
+  CircularProgress
 } from '@mui/material';
 import {
-  Info as InfoIcon,
-  Help as HelpIcon,
-  ExpandMore as ExpandMoreIcon,
   TrendingUp as TrendingUpIcon
 } from '@mui/icons-material';
 import * as yup from 'yup';
 import api from '../../services/api';
 
-interface SmartPredictionFormProps {
+export interface SmartPredictionFormProps {
   sessionId: string;
+  featureNames: string[];
   onResult: (result: any) => void;
 }
 
-interface FeatureContribution {
-  [key: string]: number;
-}
-
-export const SmartPredictionForm: React.FC<SmartPredictionFormProps> = ({ 
+const SmartPredictionForm: React.FC<SmartPredictionFormProps> = ({ 
   sessionId, 
+  featureNames,
   onResult 
 }) => {
-  const [schema, setSchema] = useState<any>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [validationSchema, setValidationSchema] = useState<yup.ObjectSchema<any> | null>(null);
   const [loading, setLoading] = useState(false);
   const [predictions, setPredictions] = useState<any>(null);
-  const [featureHelp, setFeatureHelp] = useState<Record<string, string>>({});
 
-  // Load schema and setup validation
   useEffect(() => {
-    const loadSchema = async () => {
-      try {
-        const response = await api.get(`/api/enterprise-training/schema/${sessionId}`);
-        const schemaData = response.data;
-        setSchema(schemaData);
+    const initialData: Record<string, string> = {};
+    featureNames.forEach(feature => initialData[feature] = '');
+    setFormData(initialData);
+  }, [featureNames]);
 
-        // Initialize form data
-        const initialData: Record<string, string> = {};
-        const helpTexts: Record<string, string> = {};
-        
-        Object.keys(schemaData.properties.features.properties).forEach(feature => {
-          initialData[feature] = '';
-          helpTexts[feature] = `Enter a numeric value for ${feature}. This feature contributes to the model's prediction.`;
-        });
-        
-        setFormData(initialData);
-        setFeatureHelp(helpTexts);
+  // Create validation schema
+  const validationSchema = React.useMemo(() => {
+    const schemaFields: Record<string, any> = {};
+    featureNames.forEach(feature => {
+      schemaFields[feature] = yup
+        .number()
+        .required(`${feature} is required`)
+        .typeError(`${feature} must be a number`);
+    });
+    return yup.object().shape(schemaFields);
+  }, [featureNames]);
 
-        // Create Yup validation schema
-        const featureValidations: Record<string, any> = {};
-        Object.keys(schemaData.properties.features.properties).forEach(feature => {
-          featureValidations[feature] = yup
-            .number()
-            .required(`${feature} is required`)
-            .typeError(`${feature} must be a number`);
-        });
-
-        const yupSchema = yup.object().shape(featureValidations);
-        setValidationSchema(yupSchema);
-
-      } catch (error) {
-        console.error('Failed to load prediction schema:', error);
-      }
-    };
-
-    if (sessionId) {
-      loadSchema();
-    }
-  }, [sessionId]);
-
-  // Real-time validation
   const validateField = async (fieldName: string, value: string) => {
-    if (!validationSchema) return;
-
     try {
       await validationSchema.validateAt(fieldName, { [fieldName]: Number(value) });
       setErrors(prev => ({ ...prev, [fieldName]: '' }));
@@ -102,32 +61,24 @@ export const SmartPredictionForm: React.FC<SmartPredictionFormProps> = ({
 
   const handleFieldChange = (fieldName: string, value: string) => {
     setFormData(prev => ({ ...prev, [fieldName]: value }));
-    validateField(fieldName, value);
+    if (value !== '') validateField(fieldName, value);
   };
 
   const handlePredict = async () => {
-    if (!validationSchema) return;
-
     setLoading(true);
     try {
-      // Validate all fields
       const numericData: Record<string, number> = {};
-      Object.entries(formData).forEach(([key, value]) => {
-        numericData[key] = Number(value);
-      });
-
+      Object.entries(formData).forEach(([key, value]) => numericData[key] = Number(value));
       await validationSchema.validate(numericData);
 
-      // Make prediction
-      const response = await api.post('/api/enterprise-training/predict', {
+      // Call API
+      const response = await api.post('/api/training/predict', {
         session_id: sessionId,
         features: numericData
       });
-
-      const result = response.data;
-      setPredictions(result);
-      onResult(result);
-
+      
+      setPredictions(response.data);
+      onResult(response.data);
     } catch (error: any) {
       if (error.name === 'ValidationError') {
         setErrors({ general: error.message });
@@ -139,17 +90,15 @@ export const SmartPredictionForm: React.FC<SmartPredictionFormProps> = ({
     }
   };
 
-  const isFormValid = () => {
-    return Object.values(formData).every(value => value !== '') && 
-           Object.values(errors).every(error => error === '');
-  };
+  const isFormValid = () => 
+    featureNames.every(f => formData[f] !== '') &&
+    Object.values(errors).every(e => e === '');
 
-  if (!schema) {
+  if (featureNames.length === 0) {
     return (
-      <Box sx={{ p: 2 }}>
-        <LinearProgress />
-        <Typography sx={{ mt: 1 }}>Loading prediction form...</Typography>
-      </Box>
+      <Alert severity="info">
+        No features available for prediction. Please train a model first.
+      </Alert>
     );
   }
 
@@ -157,38 +106,27 @@ export const SmartPredictionForm: React.FC<SmartPredictionFormProps> = ({
     <Box>
       <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
         <TrendingUpIcon sx={{ mr: 1 }} />
-        Smart Prediction Input
+        🎯 Smart Prediction Input
       </Typography>
       
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Enter values for each feature. The form provides real-time validation and helpful tooltips.
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Enter values for each feature to get a prediction from your trained model.
       </Typography>
 
       <Stack spacing={2}>
-        {Object.keys(schema.properties.features.properties).map(feature => (
-          <Box key={feature}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <TextField
-                label={feature}
-                value={formData[feature]}
-                onChange={(e) => handleFieldChange(feature, e.target.value)}
-                error={!!errors[feature]}
-                helperText={errors[feature]}
-                fullWidth
-                type="number"
-                variant="outlined"
-                InputProps={{
-                  endAdornment: (
-                    <Tooltip title={featureHelp[feature]} arrow>
-                      <IconButton size="small">
-                        <HelpIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )
-                }}
-              />
-            </Box>
-          </Box>
+        {featureNames.map(feature => (
+          <TextField
+            key={feature}
+            label={feature}
+            value={formData[feature] || ''}
+            onChange={e => handleFieldChange(feature, e.target.value)}
+            error={!!errors[feature]}
+            helperText={errors[feature] || `Enter numeric value for ${feature}`}
+            fullWidth
+            type="number"
+            variant="outlined"
+            size="small"
+          />
         ))}
 
         {errors.general && (
@@ -202,7 +140,8 @@ export const SmartPredictionForm: React.FC<SmartPredictionFormProps> = ({
           onClick={handlePredict}
           disabled={!isFormValid() || loading}
           size="large"
-          sx={{ mt: 3 }}
+          startIcon={loading ? <CircularProgress size={20} /> : <TrendingUpIcon />}
+          sx={{ mt: 2 }}
         >
           {loading ? 'Predicting...' : 'Get Smart Prediction'}
         </Button>
@@ -215,67 +154,43 @@ export const SmartPredictionForm: React.FC<SmartPredictionFormProps> = ({
               🎯 Prediction Results
             </Typography>
             
-            <Stack spacing={2}>
-              <Box>
+            <Stack spacing={1}>
+              <Typography variant="body1">
+                <strong>Predicted Value:</strong> {predictions.predictions?.[0] || 'N/A'}
+              </Typography>
+              
+              {predictions.confidence && (
                 <Typography variant="body1">
-                  <strong>Predicted Value:</strong> {predictions.predictions[0]}
+                  <strong>Confidence:</strong> {(predictions.confidence * 100).toFixed(1)}%
                 </Typography>
-                {predictions.confidence && (
-                  <Typography variant="body1">
-                    <strong>Confidence:</strong> {(predictions.confidence * 100).toFixed(1)}%
-                  </Typography>
-                )}
-              </Box>
+              )}
+
+              {predictions.predicted_classes && (
+                <Typography variant="body1">
+                  <strong>Predicted Class:</strong> {predictions.predicted_classes[0]}
+                </Typography>
+              )}
 
               {predictions.probabilities && (
-                <Box>
+                <Box sx={{ mt: 2 }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     Class Probabilities:
                   </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap">
                     {predictions.probabilities[0].map((prob: number, idx: number) => (
-                      <Chip
-                        key={idx}
-                        label={`Class ${idx}: ${(prob * 100).toFixed(1)}%`}
-                        color={prob > 0.5 ? 'success' : 'default'}
-                        size="small"
-                      />
+                      <Typography key={idx} variant="body2" sx={{ 
+                        bgcolor: 'background.paper', 
+                        px: 1, 
+                        py: 0.5, 
+                        borderRadius: 1,
+                        border: 1,
+                        borderColor: prob > 0.5 ? 'success.main' : 'grey.300'
+                      }}>
+                        Class {idx}: {(prob * 100).toFixed(1)}%
+                      </Typography>
                     ))}
                   </Stack>
                 </Box>
-              )}
-
-              {predictions.feature_contributions && (
-                <Accordion>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography>Feature Contributions Analysis</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <Stack spacing={1}>
-                      {Object.entries(predictions.feature_contributions as FeatureContribution)
-                        .sort(([,a], [,b]) => Math.abs(b) - Math.abs(a))
-                        .map(([feature, contribution]) => (
-                          <Box key={feature} sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Typography variant="body2" sx={{ minWidth: 120 }}>
-                              {feature}:
-                            </Typography>
-                            <Box sx={{ flex: 1, mx: 2 }}>
-                              <LinearProgress
-                                variant="determinate"
-                                value={Math.abs(contribution) * 100}
-                                color={contribution > 0 ? 'success' : 'warning'}
-                                sx={{ height: 8 }}
-                              />
-                            </Box>
-                            <Typography variant="body2" color={contribution > 0 ? 'success.main' : 'warning.main'}>
-                              {contribution > 0 ? '+' : ''}{contribution.toFixed(4)}
-                            </Typography>
-                          </Box>
-                        ))
-                      }
-                    </Stack>
-                  </AccordionDetails>
-                </Accordion>
               )}
             </Stack>
           </CardContent>

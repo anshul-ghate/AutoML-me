@@ -4,8 +4,7 @@ import {
   Button, CircularProgress, Alert, Card, CardContent,
   Switch, FormControlLabel, Chip, TextField, Divider, List, ListItem,
   ListItemText, IconButton, Slider, FormControl, InputLabel, Select, MenuItem,
-  Table, TableBody, TableCell, TableHead, TableRow, LinearProgress, Stack,
-  Autocomplete, Accordion, AccordionSummary, AccordionDetails,
+  LinearProgress, Stack, Autocomplete, Accordion, AccordionSummary, AccordionDetails,
   Dialog, DialogTitle, DialogContent, DialogActions, Tooltip
 } from '@mui/material';
 import {
@@ -26,7 +25,7 @@ import {
   ArrowForward as ArrowForwardIcon,
   ArrowBack as ArrowBackIcon,
   Visibility as VisibilityIcon,
-  Psychology as PredictiveAnalyticsIcon // ✅ Using Psychology icon instead of non-existent PredictiveAnalytics
+  Psychology as PredictiveAnalyticsIcon
 } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
 import api from '../../services/api';
@@ -51,16 +50,6 @@ interface TrainingConfig {
   autoEngineer: boolean;
   testSize: number;
   cvFolds: number;
-}
-
-interface ModelResult {
-  cv_mean_accuracy: number;
-  cv_std_accuracy: number;
-  test_accuracy: number;
-  test_precision: number;
-  test_recall: number;
-  test_f1: number;
-  training_time_seconds: number;
 }
 
 interface StepStatus {
@@ -93,13 +82,11 @@ export const EnhancedTrainingPanel: React.FC = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
-  // ✅ NEW: Step 7 state for evaluation and prediction
+  // Step 7 state for evaluation and prediction
   const [evalMetrics, setEvalMetrics] = useState<any>(null);
   const [showEvalDialog, setShowEvalDialog] = useState(false);
   const [showPredictDialog, setShowPredictDialog] = useState(false);
   const [predictInputs, setPredictInputs] = useState<Record<string, any>>({});
-  const [predictResult, setPredictResult] = useState<any>(null);
-  const [predictLoading, setPredictLoading] = useState(false);
 
   // Available columns for target selection
   const availableColumns = useMemo(() => {
@@ -336,7 +323,7 @@ export const EnhancedTrainingPanel: React.FC = () => {
     }
   };
 
-  // ✅ NEW: Step 7 functions
+  // Step 7 functions
   const fetchEvaluation = async () => {
     if (!sessionId) return;
     
@@ -352,23 +339,6 @@ export const EnhancedTrainingPanel: React.FC = () => {
   const downloadModel = () => {
     if (!sessionId) return;
     window.open(`/api/training/export/model/${sessionId}`, '_blank');
-  };
-
-  const handlePredict = async () => {
-    if (!sessionId || Object.keys(predictInputs).length === 0) return;
-    
-    setPredictLoading(true);
-    try {
-      const response = await api.post('/api/training/predict', {
-        session_id: sessionId,
-        features: predictInputs
-      });
-      setPredictResult(response.data);
-    } catch (error: any) {
-      setStepError('prediction', error.response?.data?.detail || 'Prediction failed');
-    } finally {
-      setPredictLoading(false);
-    }
   };
 
   const navigateToStep = (stepIndex: number) => {
@@ -426,7 +396,6 @@ export const EnhancedTrainingPanel: React.FC = () => {
     setShowEvalDialog(false);
     setShowPredictDialog(false);
     setPredictInputs({});
-    setPredictResult(null);
     
     if (pollingInterval) {
       clearInterval(pollingInterval);
@@ -1203,7 +1172,7 @@ export const EnhancedTrainingPanel: React.FC = () => {
                     </Accordion>
                   )}
 
-                  {/* ✅ NEW: Step 7 Action Buttons */}
+                  {/* ENHANCED: Model Export & Evaluation Section */}
                   <Card sx={{ mt: 3, bgcolor: 'background.paper' }}>
                     <CardContent>
                       <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
@@ -1234,7 +1203,6 @@ export const EnhancedTrainingPanel: React.FC = () => {
                           variant="contained"
                           onClick={() => {
                             if (results.feature_engineering?.feature_names) {
-                              // Initialize predict inputs with feature names
                               const initialInputs: Record<string, any> = {};
                               results.feature_engineering.feature_names.forEach((name: string) => {
                                 initialInputs[name] = '';
@@ -1313,7 +1281,7 @@ export const EnhancedTrainingPanel: React.FC = () => {
         </Box>
       </Paper>
 
-            {/* ✅ CORRECTED: Evaluation Dialog */}
+      {/* ENHANCED: Evaluation Dialog with InteractiveCharts */}
       <Dialog 
         open={showEvalDialog} 
         onClose={() => setShowEvalDialog(false)} 
@@ -1328,96 +1296,12 @@ export const EnhancedTrainingPanel: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           {evalMetrics ? (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                📊 Performance Metrics
-              </Typography>
-              
-              {/* ROC-AUC Display */}
-              {evalMetrics.roc_auc && (
-                <Card sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="body1" fontWeight="bold">
-                          ROC-AUC Score: {(evalMetrics.roc_auc * 100).toFixed(1)}%
-                        </Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={evalMetrics.roc_auc * 100}
-                          color="success"
-                          sx={{ mt: 1, height: 8, borderRadius: 4 }}
-                        />
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Confusion Matrix */}
-              {evalMetrics.confusion_matrix && evalMetrics.class_labels && (
-                <Card sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      🎯 Confusion Matrix
-                    </Typography>
-                    <Box sx={{ overflow: 'auto' }}>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell><strong>Actual →</strong></TableCell>
-                            {evalMetrics.class_labels.map((label: string) => (
-                              <TableCell key={label} align="center">
-                                <strong>{label}</strong>
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {evalMetrics.confusion_matrix.map((row: number[], rowIdx: number) => (
-                            <TableRow key={rowIdx}>
-                              <TableCell>
-                                <strong>{evalMetrics.class_labels[rowIdx]}</strong>
-                              </TableCell>
-                              {row.map((value: number, colIdx: number) => (
-                                <TableCell key={colIdx} align="center">
-                                  <Chip 
-                                    label={value} 
-                                    color={rowIdx === colIdx ? 'success' : 'default'}
-                                    size="small"
-                                  />
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </Box>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Raw Metrics Accordion */}
-              <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography>📋 Detailed Metrics Data</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Box component="pre" sx={{ 
-                    bgcolor: 'grey.100', 
-                    p: 2, 
-                    borderRadius: 1,
-                    overflow: 'auto',
-                    fontSize: '0.875rem',
-                    fontFamily: 'monospace'
-                  }}>
-                    {JSON.stringify(evalMetrics, null, 2)}
-                  </Box>
-                </AccordionDetails>
-              </Accordion>
-            </Box>
+            <InteractiveCharts metrics={evalMetrics} />
           ) : (
-            <Typography>No evaluation metrics available</Typography>
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <CircularProgress />
+              <Typography sx={{ mt: 2 }}>Loading evaluation metrics...</Typography>
+            </Box>
           )}
         </DialogContent>
         <DialogActions>
@@ -1427,7 +1311,7 @@ export const EnhancedTrainingPanel: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ✅ CORRECTED: Smart Prediction Dialog */}
+      {/* ENHANCED: Smart Prediction Dialog with SmartPredictionForm */}
       <Dialog 
         open={showPredictDialog} 
         onClose={() => setShowPredictDialog(false)} 
@@ -1437,78 +1321,25 @@ export const EnhancedTrainingPanel: React.FC = () => {
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <PredictiveAnalyticsIcon sx={{ mr: 1 }} />
-            Model Prediction
+            Smart Model Prediction
           </Box>
         </DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Enter values for each feature to get a prediction from your trained model.
-          </Typography>
-          
-          <Stack spacing={2}>
-            {Object.keys(predictInputs).map((feature) => (
-              <TextField
-                key={feature}
-                label={feature}
-                value={predictInputs[feature] || ''}
-                onChange={(e) => setPredictInputs({ 
-                  ...predictInputs, 
-                  [feature]: e.target.value 
-                })}
-                fullWidth
-                type="number"
-                size="small"
-                helperText="Enter numeric value"
-              />
-            ))}
-          </Stack>
-          
-          {predictResult && (
-            <Card sx={{ mt: 3, bgcolor: 'success.light' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  🎯 Prediction Results
-                </Typography>
-                <Typography variant="body1">
-                  <strong>Predicted Value:</strong> {predictResult.predictions?.[0] || 'N/A'}
-                </Typography>
-                {predictResult.predicted_classes && (
-                  <Typography variant="body1" sx={{ mt: 1 }}>
-                    <strong>Predicted Class:</strong> {predictResult.predicted_classes[0]}
-                  </Typography>
-                )}
-                {predictResult.probabilities && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                      Class Probabilities:
-                    </Typography>
-                    <Stack direction="row" spacing={1} flexWrap="wrap">
-                      {predictResult.probabilities[0].map((prob: number, idx: number) => (
-                        <Chip
-                          key={idx}
-                          label={`Class ${idx}: ${(prob * 100).toFixed(1)}%`}
-                          size="small"
-                          color={prob > 0.5 ? 'success' : 'default'}
-                        />
-                      ))}
-                    </Stack>
-                  </Box>
-                )}
-              </CardContent>
-            </Card>
+          {sessionId && results?.feature_engineering?.feature_names ? (
+            <SmartPredictionForm 
+              sessionId={sessionId}
+              featureNames={results.feature_engineering.feature_names}
+              onResult={() => {}} 
+            />
+          ) : (
+            <Alert severity="info">
+              Please complete model training first to enable predictions.
+            </Alert>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowPredictDialog(false)}>
             Close
-          </Button>
-          <Button
-            onClick={handlePredict}
-            variant="contained"
-            disabled={predictLoading || Object.values(predictInputs).some(v => v === '')}
-            startIcon={predictLoading ? <CircularProgress size={16} /> : <PredictiveAnalyticsIcon />}
-          >
-            {predictLoading ? 'Predicting...' : 'Get Prediction'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1534,4 +1365,3 @@ export const EnhancedTrainingPanel: React.FC = () => {
 
 export const TrainingPanel = EnhancedTrainingPanel;
 export default EnhancedTrainingPanel;
-

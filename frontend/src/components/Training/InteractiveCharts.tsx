@@ -1,30 +1,23 @@
 import React from 'react';
-import { Line, Bar } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js';
-import { Box, Typography, Card, CardContent, Stack } from '@mui/material';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+import { 
+  Box, 
+  Typography, 
+  Card, 
+  CardContent, 
+  Stack,
+  Chip,
+  LinearProgress,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Paper,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
+} from '@mui/material';
+import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 
 interface InteractiveChartsProps {
   metrics: any;
@@ -32,212 +25,135 @@ interface InteractiveChartsProps {
 
 export const InteractiveCharts: React.FC<InteractiveChartsProps> = ({ metrics }) => {
   
-  // ROC Curve Chart
-  const rocChartData = metrics.roc_curve ? {
-    labels: metrics.roc_curve.fpr.map((_: any, i: number) => i),
-    datasets: [
-      {
-        label: `ROC Curve (AUC = ${(metrics.roc_auc * 100).toFixed(1)}%)`,
-        data: metrics.roc_curve.fpr.map((fpr: number, i: number) => ({
-          x: fpr,
-          y: metrics.roc_curve.tpr[i]
-        })),
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.1)',
-        fill: true,
-        tension: 0.4
-      },
-      {
-        label: 'Random Classifier',
-        data: [{ x: 0, y: 0 }, { x: 1, y: 1 }],
-        borderColor: 'rgb(54, 162, 235)',
-        borderDash: [5, 5],
-        fill: false
-      }
-    ]
-  } : null;
-
-  const rocChartOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: 'ROC Curve Analysis'
-      },
-    },
-    scales: {
-      x: {
-        type: 'linear' as const,
-        position: 'bottom' as const,
-        title: {
-          display: true,
-          text: 'False Positive Rate'
-        },
-        min: 0,
-        max: 1
-      },
-      y: {
-        title: {
-          display: true,
-          text: 'True Positive Rate'
-        },
-        min: 0,
-        max: 1
-      }
-    }
-  };
-
-  // Precision-Recall Curve
-  const prChartData = metrics.pr_curve ? {
-    labels: metrics.pr_curve.recall.map((_: any, i: number) => i),
-    datasets: [
-      {
-        label: 'Precision-Recall Curve',
-        data: metrics.pr_curve.recall.map((recall: number, i: number) => ({
-          x: recall,
-          y: metrics.pr_curve.precision[i]
-        })),
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.1)',
-        fill: true,
-        tension: 0.4
-      }
-    ]
-  } : null;
-
-  const prChartOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: 'Precision-Recall Curve'
-      },
-    },
-    scales: {
-      x: {
-        type: 'linear' as const,
-        position: 'bottom' as const,
-        title: {
-          display: true,
-          text: 'Recall'
-        },
-        min: 0,
-        max: 1
-      },
-      y: {
-        title: {
-          display: true,
-          text: 'Precision'
-        },
-        min: 0,
-        max: 1
-      }
-    }
-  };
-
-  // Feature Importance Chart
-  const featureImportanceData = metrics.per_class_metrics ? {
-    labels: metrics.per_class_metrics.map((item: any) => item.class),
-    datasets: [
-      {
-        label: 'Precision',
-        data: metrics.per_class_metrics.map((item: any) => item.precision * 100),
-        backgroundColor: 'rgba(255, 99, 132, 0.8)',
-      },
-      {
-        label: 'Recall',
-        data: metrics.per_class_metrics.map((item: any) => item.recall * 100),
-        backgroundColor: 'rgba(54, 162, 235, 0.8)',
-      },
-      {
-        label: 'F1 Score',
-        data: metrics.per_class_metrics.map((item: any) => item.f1_score * 100),
-        backgroundColor: 'rgba(75, 192, 192, 0.8)',
-      }
-    ]
-  } : null;
-
-  const featureImportanceOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: true,
-        text: 'Per-Class Performance Metrics'
-      },
-    },
-    scales: {
-      y: {
-        title: {
-          display: true,
-          text: 'Percentage (%)'
-        },
-        min: 0,
-        max: 100
-      }
-    }
-  };
-
   return (
     <Stack spacing={3}>
-      {/* ROC Curve */}
-      {rocChartData && (
-        <Card>
-          <CardContent>
-            <Box sx={{ height: 400 }}>
-              <Line data={rocChartData} options={rocChartOptions} />
-            </Box>
-          </CardContent>
-        </Card>
-      )}
+      <Typography variant="h6" gutterBottom>
+        📊 Model Performance Visualization
+      </Typography>
 
-      {/* Precision-Recall Curve */}
-      {prChartData && (
+      {/* ROC-AUC Display */}
+      {metrics.roc_auc && (
         <Card>
           <CardContent>
-            <Box sx={{ height: 400 }}>
-              <Line data={prChartData} options={prChartOptions} />
+            <Typography variant="h6" gutterBottom>
+              🎯 ROC-AUC Performance
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <LinearProgress
+                variant="determinate"
+                value={metrics.roc_auc * 100}
+                color="success"
+                sx={{ flex: 1, mr: 2, height: 12, borderRadius: 6 }}
+              />
+              <Typography variant="h6" color="success.main">
+                {(metrics.roc_auc * 100).toFixed(1)}%
+              </Typography>
             </Box>
+            <Typography variant="body2" color="text.secondary">
+              ROC-AUC measures model's ability to distinguish between classes
+            </Typography>
           </CardContent>
         </Card>
       )}
 
       {/* Per-Class Metrics */}
-      {featureImportanceData && (
+      {metrics.per_class_metrics && (
         <Card>
           <CardContent>
-            <Box sx={{ height: 400 }}>
-              <Bar data={featureImportanceData} options={featureImportanceOptions} />
-            </Box>
+            <Typography variant="h6" gutterBottom>
+              📈 Per-Class Performance
+            </Typography>
+            <Stack spacing={2}>
+              {metrics.per_class_metrics.map((classMetric: any, idx: number) => (
+                <Box key={idx} sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                    Class: {classMetric.class}
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                    <Chip 
+                      label={`Precision: ${(classMetric.precision * 100).toFixed(1)}%`}
+                      color="primary"
+                      size="small"
+                    />
+                    <Chip 
+                      label={`Recall: ${(classMetric.recall * 100).toFixed(1)}%`}
+                      color="secondary"
+                      size="small"
+                    />
+                    <Chip 
+                      label={`F1: ${(classMetric.f1_score * 100).toFixed(1)}%`}
+                      color="success"
+                      size="small"
+                    />
+                  </Stack>
+                </Box>
+              ))}
+            </Stack>
           </CardContent>
         </Card>
       )}
 
-      {/* Confusion Matrix Heatmap */}
-      {metrics.confusion_heatmap && (
+      {/* Confusion Matrix */}
+      {metrics.confusion_matrix && metrics.class_labels && (
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
-              Confusion Matrix Heatmap
+              🎯 Confusion Matrix
             </Typography>
-            <Box sx={{ textAlign: 'center' }}>
-              <img 
-                src={`data:image/png;base64,${metrics.confusion_heatmap}`}
-                alt="Confusion Matrix Heatmap"
-                style={{ maxWidth: '100%', height: 'auto' }}
-              />
-            </Box>
+            <Paper sx={{ overflow: 'auto' }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell><strong>Actual →</strong></TableCell>
+                    {metrics.class_labels.map((label: string) => (
+                      <TableCell key={label} align="center">
+                        <strong>{label}</strong>
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {metrics.confusion_matrix.map((row: number[], rowIdx: number) => (
+                    <TableRow key={rowIdx}>
+                      <TableCell>
+                        <strong>{metrics.class_labels[rowIdx]}</strong>
+                      </TableCell>
+                      {row.map((value: number, colIdx: number) => (
+                        <TableCell key={colIdx} align="center">
+                          <Chip 
+                            label={value} 
+                            color={rowIdx === colIdx ? 'success' : 'default'}
+                            size="small"
+                          />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Paper>
           </CardContent>
         </Card>
       )}
+
+      {/* Raw Metrics */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>📋 Detailed Metrics Data</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box component="pre" sx={{
+            bgcolor: 'grey.100',
+            p: 2,
+            borderRadius: 1,
+            overflow: 'auto',
+            fontSize: '0.875rem',
+            fontFamily: 'monospace'
+          }}>
+            {JSON.stringify(metrics, null, 2)}
+          </Box>
+        </AccordionDetails>
+      </Accordion>
     </Stack>
   );
 };

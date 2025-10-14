@@ -17,6 +17,7 @@ import { FileUpload } from './components/Upload/FileUpload';
 import { ChatWidget } from './components/Chat/ChatWidget';
 import { PipelineCanvas } from './components/PipelineBuilder/PipelineCanvas';
 import { EnhancedTrainingPanel as TrainingPanel } from './components/Training/EnhancedTrainingPanel';
+import EnhancedNavigation from './components/Dashboard/EnhancedNavigation';
 import { 
   ThemeProvider, 
   CssBaseline, 
@@ -59,6 +60,24 @@ function TabPanel(props: TabPanelProps) {
     </div>
   );
 }
+
+const theme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: {
+      main: '#1976d2',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+  },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+  },
+  shape: {
+    borderRadius: 8,
+  },
+});
 
 const Dashboard = () => {
   const { logout, user } = React.useContext(AuthContext);

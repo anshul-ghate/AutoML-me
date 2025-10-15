@@ -1,258 +1,384 @@
-import React, { useState, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-} from 'react-router-dom';
-import { CustomThemeProvider } from './theme/CustomThemeProvider';
-import { AuthProvider, AuthContext } from './context/AuthContext';
-import { Login } from './components/Auth/Login';
-import { Register } from './components/Auth/Register';
-import { ProtectedRoute } from './components/common/ProtectedRoute';
-import { ThemeToggle } from './components/common/ThemeToggle';
-import { LanguageSwitcher } from './components/common/LanguageSwitcher';
-import { getTheme } from './theme/muiTheme';
-import { FileUpload } from './components/Upload/FileUpload';
-import { ChatWidget } from './components/Chat/ChatWidget';
-import { PipelineCanvas } from './components/PipelineBuilder/PipelineCanvas';
-import { EnhancedTrainingPanel as TrainingPanel } from './components/Training/EnhancedTrainingPanel';
-import EnhancedNavigation from './components/Dashboard/EnhancedNavigation';
+import React, { useState, useEffect } from 'react';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 import { 
-  ThemeProvider, 
-  CssBaseline, 
+  Box, 
   Container, 
+  Paper, 
   Typography, 
-  AppBar, 
-  Toolbar, 
-  Button,
-  Box,
-  Card,
-  CardContent,
-  Tabs,
-  Tab,
+  TextField, 
+  Button, 
+  Stack, 
   Avatar,
-  Stack
+  Divider,
+  Tab,
+  Tabs,
+  Alert
 } from '@mui/material';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import ChatIcon from '@mui/icons-material/Chat';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import PsychologyIcon from '@mui/icons-material/Psychology'; 
+import { 
+  Psychology as PsychologyIcon,
+  Login as LoginIcon,
+  PersonAdd as SignupIcon 
+} from '@mui/icons-material';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
+// Import our main application
+import AutoMLApplication from './AutoMLApplication';
 
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`tabpanel-${index}`}
-      aria-labelledby={`tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
-
+// Theme configuration
 const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
       main: '#1976d2',
+      light: '#42a5f5',
+      dark: '#1565c0',
     },
     secondary: {
       main: '#dc004e',
     },
+    background: {
+      default: '#f8fafc',
+      paper: '#ffffff',
+    },
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    h4: {
+      fontWeight: 700,
+    },
+    h6: {
+      fontWeight: 600,
+    },
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: 12,
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          borderRadius: 8,
+          fontWeight: 600,
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          border: '1px solid rgba(0,0,0,0.05)',
+        },
+      },
+    },
   },
 });
 
-const Dashboard = () => {
-  const { logout, user } = React.useContext(AuthContext);
-  const { t } = useTranslation();
-  const [tabValue, setTabValue] = useState(0);
+// Authentication interfaces
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+}
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
+interface AuthState {
+  isAuthenticated: boolean;
+  user: User | null;
+  isLoading: boolean;
+}
+
+// Login/Registration component
+const AuthenticationScreen: React.FC<{
+  onAuthenticate: (user: User) => void;
+}> = ({ onAuthenticate }) => {
+  const [isLogin, setIsLogin] = useState(true);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      if (!isLogin && formData.password !== formData.confirmPassword) {
+        throw new Error('Passwords do not match');
+      }
+
+      if (!formData.email || !formData.password) {
+        throw new Error('Please fill in all required fields');
+      }
+
+      // Mock successful authentication
+      const user: User = {
+        id: '1',
+        name: formData.name || 'Anshul Ghate',
+        email: formData.email,
+        avatar: undefined
+      };
+
+      onAuthenticate(user);
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar 
-        position="static" 
-        elevation={0} 
-        sx={{ 
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          mb: 4 
-        }}
-      >
-        <Toolbar>
-          <Stack direction="row" spacing={2} alignItems="center" sx={{ flexGrow: 1 }}>
-            <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)' }}>
-              <SmartToyIcon />
-            </Avatar>
-            <Typography variant="h5" component="div" sx={{ fontWeight: 'bold' }}>
-              {t('automl_platform')}
-            </Typography>
-          </Stack>
-          
-          <Stack direction="row" spacing={2} alignItems="center">
-            <LanguageSwitcher />
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              {t('welcome_user', { username: user?.username || 'User' })}
-            </Typography>
-            <Button 
-              color="inherit" 
-              onClick={logout} 
-              variant="outlined"
-              sx={{ 
-                borderColor: 'rgba(255,255,255,0.3)',
-                '&:hover': {
-                  borderColor: 'rgba(255,255,255,0.8)',
-                  bgcolor: 'rgba(255,255,255,0.1)'
-                }
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        py: 4
+      }}
+    >
+      <Container maxWidth="sm">
+        <Paper
+          elevation={24}
+          sx={{
+            p: 4,
+            borderRadius: 3,
+            backdropFilter: 'blur(20px)',
+            background: 'rgba(255, 255, 255, 0.95)'
+          }}
+        >
+          {/* Header */}
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Avatar
+              sx={{
+                bgcolor: 'primary.main',
+                width: 64,
+                height: 64,
+                mx: 'auto',
+                mb: 2
               }}
             >
-              {t('logout')}
-            </Button>
-          </Stack>
-        </Toolbar>
-      </AppBar>
-      
-      <Container maxWidth="xl">
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 4 }}>
-          <Tabs 
-            value={tabValue} 
-            onChange={handleTabChange} 
-            aria-label="platform tabs"
-            sx={{
-              '& .MuiTab-root': {
-                minHeight: 72,
-                fontSize: '1rem',
-                fontWeight: 600
-              }
-            }}
+              <PsychologyIcon sx={{ fontSize: 36 }} />
+            </Avatar>
+            <Typography variant="h4" gutterBottom>
+              AutoML Platform
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              AI-powered machine learning for everyone
+            </Typography>
+          </Box>
+
+          {/* Tab switcher */}
+          <Tabs
+            value={isLogin ? 0 : 1}
+            onChange={(_, value) => setIsLogin(value === 0)}
+            variant="fullWidth"
+            sx={{ mb: 3 }}
           >
-            <Tab 
-              icon={<CloudUploadIcon sx={{ fontSize: 28 }} />} 
-              label={t('data_upload')} 
-              id="tab-0"
-              aria-controls="tabpanel-0"
-            />
-            <Tab 
-              icon={<ChatIcon sx={{ fontSize: 28 }} />} 
-              label={t('ai_assistant')} 
-              id="tab-1"
-              aria-controls="tabpanel-1"
-            />
-            <Tab 
-              icon={<AccountTreeIcon sx={{ fontSize: 28 }} />} 
-              label={t('pipeline_builder')} 
-              id="tab-2"
-              aria-controls="tabpanel-2"
-            />
-			<Tab 
-			  icon={<PsychologyIcon sx={{ fontSize: 28 }} />} 
-			  label="Model Training" 
-			  id="tab-3"
-			  aria-controls="tabpanel-3"
-			/>
+            <Tab label="Login" />
+            <Tab label="Sign Up" />
           </Tabs>
-        </Box>
 
-        <TabPanel value={tabValue} index={0}>
-          <Card elevation={0} sx={{ borderRadius: 3, border: 1, borderColor: 'divider' }}>
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 700 }}>
-                📁 {t('upload_your_data')}
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary', fontSize: '1.1rem' }}>
-                {t('upload_dataset_description')}
-              </Typography>
-              <FileUpload />
-            </CardContent>
-          </Card>
-        </TabPanel>
+          {/* Form */}
+          <Box component="form" onSubmit={handleSubmit}>
+            <Stack spacing={3}>
+              {!isLogin && (
+                <TextField
+                  fullWidth
+                  label="Full Name"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  required={!isLogin}
+                />
+              )}
+              
+              <TextField
+                fullWidth
+                label="Email Address"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                required
+              />
+              
+              <TextField
+                fullWidth
+                label="Password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                required
+              />
+              
+              {!isLogin && (
+                <TextField
+                  fullWidth
+                  label="Confirm Password"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  required
+                />
+              )}
 
-        <TabPanel value={tabValue} index={1}>
-          <Card elevation={0} sx={{ borderRadius: 3, border: 1, borderColor: 'divider' }}>
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 700 }}>
-                💬 {t('ai_chat_assistant')}
-              </Typography>
-              <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary', fontSize: '1.1rem' }}>
-                {t('chat_description')}
-              </Typography>
-              <ChatWidget />
-            </CardContent>
-          </Card>
-        </TabPanel>
+              {error && (
+                <Alert severity="error" onClose={() => setError('')}>
+                  {error}
+                </Alert>
+              )}
 
-        <TabPanel value={tabValue} index={2}>
-          <Card elevation={0} sx={{ borderRadius: 3, border: 1, borderColor: 'divider', minHeight: '80vh' }}>
-            <CardContent sx={{ p: 4, height: '100%' }}>
-              <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 700 }}>
-                🔧 {t('pipeline_builder_title')}
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                size="large"
+                disabled={loading}
+                startIcon={isLogin ? <LoginIcon /> : <SignupIcon />}
+                sx={{ py: 1.5 }}
+              >
+                {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
+              </Button>
+
+              {/* Demo login */}
+              <Divider>or</Divider>
+              
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={() => {
+                  setFormData({
+                    name: 'Demo User',
+                    email: 'demo@automl.com',
+                    password: 'demo123',
+                    confirmPassword: 'demo123'
+                  });
+                }}
+              >
+                Use Demo Account
+              </Button>
+            </Stack>
+          </Box>
+
+          {/* Features preview */}
+          <Box sx={{ mt: 4, pt: 3, borderTop: 1, borderColor: 'divider' }}>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Platform Features:
+            </Typography>
+            <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ mt: 1 }}>
+              <Typography variant="caption" sx={{ bgcolor: 'primary.50', px: 1.5, py: 0.5, borderRadius: 1 }}>
+                🤖 AI-Powered Analysis
               </Typography>
-              <Typography variant="body1" sx={{ mb: 4, color: 'text.secondary', fontSize: '1.1rem' }}>
-                {t('pipeline_description')}
+              <Typography variant="caption" sx={{ bgcolor: 'secondary.50', px: 1.5, py: 0.5, borderRadius: 1 }}>
+                📊 Advanced Visualization
               </Typography>
-              <Box sx={{ height: 'calc(80vh - 200px)', minHeight: '600px' }}>
-                <PipelineCanvas />
-              </Box>
-            </CardContent>
-          </Card>
-        </TabPanel>
-		
-		<TabPanel value={tabValue} index={3}>
-		  <TrainingPanel />
-		</TabPanel>
+              <Typography variant="caption" sx={{ bgcolor: 'success.50', px: 1.5, py: 0.5, borderRadius: 1 }}>
+                🚀 One-Click Deployment
+              </Typography>
+            </Stack>
+          </Box>
+        </Paper>
       </Container>
     </Box>
   );
 };
 
-export const App = () => {
-  const [mode, setMode] = useState<'light' | 'dark'>('light');
-  const theme = useMemo(() => getTheme(mode), [mode]);
+// Main App component with authentication
+const App: React.FC = () => {
+  const [authState, setAuthState] = useState<AuthState>({
+    isAuthenticated: false,
+    user: null,
+    isLoading: true
+  });
 
-  const toggleTheme = () => {
-    setMode((prev) => (prev === 'light' ? 'dark' : 'light'));
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        // Simulate checking for existing session
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Check localStorage for saved session
+        const savedUser = localStorage.getItem('automl_user');
+        if (savedUser) {
+          const user = JSON.parse(savedUser);
+          setAuthState({
+            isAuthenticated: true,
+            user,
+            isLoading: false
+          });
+          return;
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      }
+      
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+    };
+
+    checkAuthStatus();
+  }, []);
+
+  const handleAuthenticate = (user: User) => {
+    // Save user to localStorage
+    localStorage.setItem('automl_user', JSON.stringify(user));
+    
+    setAuthState({
+      isAuthenticated: true,
+      user,
+      isLoading: false
+    });
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('automl_user');
+    setAuthState({
+      isAuthenticated: false,
+      user: null,
+      isLoading: false
+    });
+  };
+
+  // Loading screen
+  if (authState.isLoading) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Box
+          sx={{
+            height: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+          }}
+        >
+          <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+            <PsychologyIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+            <Typography variant="h6">Loading AutoML Platform...</Typography>
+          </Paper>
+        </Box>
+      </ThemeProvider>
+    );
+  }
+
   return (
-	<CustomThemeProvider>
-		<ThemeProvider theme={theme}>
-		  <CssBaseline />
-		  <AuthProvider>
-			<Router>
-			  <ThemeToggle mode={mode} onToggle={toggleTheme} />
-			  
-			  <Routes>
-				<Route path="/login" element={<Login />} />
-				<Route path="/register" element={<Register />} />
-				<Route path="/" element={
-				  <ProtectedRoute>
-					<Dashboard />
-				  </ProtectedRoute>
-				} />
-			  </Routes>
-			</Router>
-		  </AuthProvider>
-		</ThemeProvider>
-	</CustomThemeProvider>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {authState.isAuthenticated && authState.user ? (
+        <AutoMLApplication user={authState.user} onLogout={handleLogout} />
+      ) : (
+        <AuthenticationScreen onAuthenticate={handleAuthenticate} />
+      )}
+    </ThemeProvider>
   );
 };
 

@@ -1,78 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { 
-  Box, 
-  Container, 
-  Paper, 
-  Typography, 
-  TextField, 
-  Button, 
-  Stack, 
+import {
+  Box,
+  Container,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Stack,
   Avatar,
   Divider,
   Tab,
   Tabs,
   Alert
 } from '@mui/material';
-import { 
+import {
   Psychology as PsychologyIcon,
   Login as LoginIcon,
-  PersonAdd as SignupIcon 
+  PersonAdd as SignupIcon
 } from '@mui/icons-material';
 
 // Import our main application
 import AutoMLApplication from './AutoMLApplication';
-
-// Theme configuration
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#1976d2',
-      light: '#42a5f5',
-      dark: '#1565c0',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-    background: {
-      default: '#f8fafc',
-      paper: '#ffffff',
-    },
-  },
-  typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    h4: {
-      fontWeight: 700,
-    },
-    h6: {
-      fontWeight: 600,
-    },
-  },
-  shape: {
-    borderRadius: 12,
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
-          borderRadius: 8,
-          fontWeight: 600,
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          border: '1px solid rgba(0,0,0,0.05)',
-        },
-      },
-    },
-  },
-});
 
 // Authentication interfaces
 interface User {
@@ -291,8 +241,71 @@ const AuthenticationScreen: React.FC<{
   );
 };
 
-// Main App component with authentication
+// Main App component with authentication and theme
 const App: React.FC = () => {
+  const [mode, setMode] = useState<'light' | 'dark'>(() =>
+    (localStorage.getItem('theme_mode') as 'light' | 'dark') || 'light'
+  );
+
+  const theme = React.useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode,
+          primary: {
+            main: '#1976d2',
+            light: '#42a5f5',
+            dark: '#1565c0',
+          },
+          secondary: {
+            main: '#dc004e',
+          },
+          background: {
+            default: mode === 'light' ? '#f8fafc' : '#121212',
+            paper: mode === 'light' ? '#ffffff' : '#1e1e1e',
+          },
+        },
+        typography: {
+          fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+          h4: {
+            fontWeight: 700,
+          },
+          h6: {
+            fontWeight: 600,
+          },
+        },
+        shape: {
+          borderRadius: 12,
+        },
+        components: {
+          MuiButton: {
+            styleOverrides: {
+              root: {
+                textTransform: 'none',
+                borderRadius: 8,
+                fontWeight: 600,
+              },
+            },
+          },
+          MuiCard: {
+            styleOverrides: {
+              root: {
+                boxShadow: mode === 'light' ? '0 2px 8px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.3)',
+                border: `1px solid ${mode === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'}`,
+              },
+            },
+          },
+        },
+      }),
+    [mode]
+  );
+
+  const toggleMode = () => {
+    const nextMode = mode === 'light' ? 'dark' : 'light';
+    setMode(nextMode);
+    localStorage.setItem('theme_mode', nextMode);
+  };
+
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     user: null,
@@ -374,7 +387,12 @@ const App: React.FC = () => {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       {authState.isAuthenticated && authState.user ? (
-        <AutoMLApplication user={authState.user} onLogout={handleLogout} />
+        <AutoMLApplication
+          user={authState.user}
+          onLogout={handleLogout}
+          darkMode={mode === 'dark'}
+          onToggleDarkMode={toggleMode}
+        />
       ) : (
         <AuthenticationScreen onAuthenticate={handleAuthenticate} />
       )}

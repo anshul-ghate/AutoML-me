@@ -1,31 +1,31 @@
 import React, { useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useDropzone } from 'react-dropzone';
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  LinearProgress, 
+import {
+  Box,
+  Typography,
+  Button,
+  LinearProgress,
   Alert,
   Chip,
   Stack,
   Paper,
-  Fade
+  Fade,
+  CircularProgress,
+  Divider 
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import { ModalitiesSelector } from './ModalitiesSelector';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 import api from '../../services/api';
-import { logEvent, logError, logUserAction } from '../../services/analytics';
 
 const DropZone = styled(Paper)<{ isDragActive: boolean }>(({ theme, isDragActive }) => ({
   padding: theme.spacing(6),
   textAlign: 'center',
   border: `3px dashed ${isDragActive ? theme.palette.primary.main : theme.palette.divider}`,
   borderRadius: theme.spacing(2),
-  background: isDragActive 
+  background: isDragActive
     ? `linear-gradient(135deg, ${theme.palette.primary.light}10, ${theme.palette.primary.main}10)`
     : theme.palette.background.paper,
   cursor: 'pointer',
@@ -50,13 +50,26 @@ const UploadButton = styled(Button)(({ theme }) => ({
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
 }));
 
+interface DataProfile {
+  shape: [number, number];
+  missing_values: Record<string, number>;
+  data_quality_score: number;
+  recommendations: string[];
+  statistical_summary: {
+    numeric_columns: string[];
+    categorical_columns: string[];
+    total_missing: number;
+  };
+}
+
 export const FileUpload: React.FC = () => {
-  const { t } = useTranslation();
-  const [modality, setModality] = useState('structured');
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
   const [uploadMessage, setUploadMessage] = useState('');
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState('');
+  const [dataProfile, setDataProfile] = useState<DataProfile | null>(null);
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) {
@@ -64,43 +77,31 @@ export const FileUpload: React.FC = () => {
       setFile(selectedFile);
       setUploadStatus('idle');
       setProgress(0);
-      
-      // Log file selection
-      logUserAction('file_selected', {
-        modality,
-        fileSize: selectedFile.size,
-        fileType: selectedFile.type,
-        fileName: selectedFile.name.split('.').pop() || 'unknown'
-      });
+      setAnalyzeError('');
+      setDataProfile(null);
     }
-  }, [modality]);
+  }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     maxFiles: 1,
     accept: {
-      'text/csv': ['.csv'],
-      'application/json': ['.json'],
-      'text/plain': ['.txt'],
-      'image/*': ['.png', '.jpg', '.jpeg'],
-      'audio/*': ['.mp3', '.wav']
-    }
+      'text/csv': ['.csv']
+    },
+    maxSize: 50 * 1024 * 1024 // 50MB
   });
 
   const upload = async () => {
     if (!file) return;
-    
+
     setUploadStatus('uploading');
     setProgress(0);
-    
-    const startTime = Date.now();
-    
+
     try {
       const form = new FormData();
       form.append('file', file);
-      const url = `/upload/${modality}`;
-      
-      await api.post(url, form, {
+
+      await api.post('/upload/structured', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (evt) => {
           if (evt.total) {
@@ -109,43 +110,55 @@ export const FileUpload: React.FC = () => {
           }
         }
       });
-      
-      const uploadTime = Date.now() - startTime;
+
       setUploadStatus('success');
-      setUploadMessage(`${file.name} ${t('upload_successful')}`);
-      
-      logEvent('upload_success', {
-        modality,
-        fileSize: file.size,
-        fileType: file.type,
-        fileName: file.name.split('.').pop() || 'unknown',
-        uploadTime
-      });
-      
+      setUploadMessage(`${file.name} uploaded successfully`);
+
       setTimeout(() => {
-        setFile(null);
-        setProgress(0);
         setUploadStatus('idle');
         setUploadMessage('');
+        setProgress(0);
       }, 3000);
-      
+
     } catch (error: any) {
-      const uploadTime = Date.now() - startTime;
-      const errorMessage = error.response?.data?.detail || t('upload_failed');
-      
+      const errorMessage = error.response?.data?.detail || 'Upload failed';
       setUploadStatus('error');
       setUploadMessage(errorMessage);
-      
-      logEvent('upload_error', {
-        modality,
-        fileSize: file?.size || 0,
-        fileType: file?.type || '',
-        error: errorMessage,
-        uploadTime,
-        statusCode: error.response?.status
+    }
+  };
+
+  const analyzeData = async () => {
+    if (!file) {
+      setAnalyzeError('Please select a CSV file first');
+      return;
+    }
+
+    setAnalyzing(true);
+    setAnalyzeError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await api.post('/api/training/analyze', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000
       });
+
+      if (!response.data?.profile) {
+        throw new Error('Invalid response from analysis endpoint');
+      }
+
+      setDataProfile(response.data.profile);
       
-      logError(error, 'file_upload');
+    } catch (error: any) {
+      console.error('Analysis failed:', error);
+      const errorMessage = error.response?.data?.detail ||
+        error.message ||
+        'Failed to analyze dataset. Please check your file format.';
+      setAnalyzeError(errorMessage);
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -158,21 +171,20 @@ export const FileUpload: React.FC = () => {
   };
 
   return (
-    <Stack spacing={4}>
-      <ModalitiesSelector value={modality} onChange={setModality} />
-      
-      <DropZone {...getRootProps()} isDragActive={isDragActive} elevation={0}>
-        <input {...getInputProps()} />
-        <Stack spacing={3} alignItems="center">
-          <CloudUploadIcon 
-            sx={{ 
-              fontSize: 64, 
-              color: isDragActive ? 'primary.main' : 'text.secondary',
-              transition: 'color 0.3s'
-            }} 
-          />
+    <Box>
+      {/* File Upload Section */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+          <CloudUploadIcon sx={{ mr: 1 }} />
+          Upload Dataset
+        </Typography>
+
+        <DropZone {...getRootProps()} isDragActive={isDragActive}>
+          <input {...getInputProps()} />
+          
           {file ? (
-            <Stack spacing={2} alignItems="center">
+            <Stack alignItems="center" spacing={2}>
+              <InsertDriveFileIcon sx={{ fontSize: 48, color: 'primary.main' }} />
               <Chip
                 icon={<InsertDriveFileIcon />}
                 label={file.name}
@@ -181,74 +193,165 @@ export const FileUpload: React.FC = () => {
                 sx={{ fontSize: '0.9rem', p: 1 }}
               />
               <Typography variant="body2" color="text.secondary">
-                {formatFileSize(file.size)} • {t('click_to_change')}
+                {formatFileSize(file.size)} • Click to change
               </Typography>
             </Stack>
           ) : (
-            <Stack spacing={1} alignItems="center">
-              <Typography variant="h6" color="text.primary">
-                {isDragActive ? 'Drop your file here' : t('drag_drop_file')}
+            <Stack alignItems="center" spacing={2}>
+              <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
+              <Typography variant="h6">
+                {isDragActive ? 'Drop your file here' : 'Drag & drop your CSV file here'}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {t('supports_files')}
+              <Typography variant="body2" color="text.secondary">
+                Maximum file size: 50MB • Supported format: CSV
               </Typography>
             </Stack>
           )}
-        </Stack>
-      </DropZone>
+        </DropZone>
 
-      {uploadStatus === 'uploading' && (
-        <Fade in>
-          <Box>
-            <LinearProgress 
-              variant="determinate" 
-              value={progress} 
-              sx={{ 
-                height: 8, 
-                borderRadius: 4,
-                bgcolor: 'grey.200',
-                '& .MuiLinearProgress-bar': {
-                  background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)'
-                }
-              }}
-            />
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              {t('uploading')} {progress}%
+        {/* Upload Progress */}
+        {uploadStatus === 'uploading' && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body2" gutterBottom>
+              Uploading {progress}%
             </Typography>
+            <LinearProgress variant="determinate" value={progress} />
           </Box>
-        </Fade>
-      )}
+        )}
 
-      {uploadStatus === 'success' && (
-        <Fade in>
-          <Alert 
-            icon={<CheckCircleIcon />} 
-            severity="success" 
-            sx={{ borderRadius: 2 }}
+        {/* Upload Status Messages */}
+        {uploadStatus === 'success' && (
+          <Fade in>
+            <Alert
+              icon={<CheckCircleIcon />}
+              severity="success"
+              sx={{ borderRadius: 2, mt: 2 }}
+            >
+              {uploadMessage}
+            </Alert>
+          </Fade>
+        )}
+
+        {uploadStatus === 'error' && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {uploadMessage}
+          </Alert>
+        )}
+
+        {/* Upload Button */}
+        {file && uploadStatus !== 'uploading' && (
+          <UploadButton
+            fullWidth
+            size="large"
+            onClick={upload}
+            startIcon={<CloudUploadIcon />}
+            sx={{ mt: 2 }}
           >
-            {uploadMessage}
-          </Alert>
-        </Fade>
+            Upload File
+          </UploadButton>
+        )}
+      </Paper>
+
+      {/* Analysis Section */}
+      {file && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+            <AnalyticsIcon sx={{ mr: 1 }} />
+            Analyze Dataset
+          </Typography>
+
+          <Button
+            variant="contained"
+            startIcon={analyzing ? <CircularProgress size={20} color="inherit" /> : <AnalyticsIcon />}
+            onClick={analyzeData}
+            disabled={analyzing}
+            size="large"
+            sx={{ mb: 2 }}
+          >
+            {analyzing ? 'Analyzing Dataset...' : 'Analyze Dataset'}
+          </Button>
+
+          {analyzeError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {analyzeError}
+            </Alert>
+          )}
+        </Paper>
       )}
 
-      {uploadStatus === 'error' && (
-        <Fade in>
-          <Alert severity="error" sx={{ borderRadius: 2 }}>
-            {uploadMessage}
-          </Alert>
-        </Fade>
-      )}
+      {/* Analysis Results */}
+      {dataProfile && (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+            📊 Dataset Profile
+          </Typography>
+          
+          <Stack spacing={2}>
+            <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              <Box>
+                <Typography variant="h4" color="primary.main" sx={{ fontWeight: 700 }}>
+                  {dataProfile.shape[0].toLocaleString()}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Rows</Typography>
+              </Box>
+              
+              <Box>
+                <Typography variant="h4" color="secondary.main" sx={{ fontWeight: 700 }}>
+                  {dataProfile.shape[1]}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Columns</Typography>
+              </Box>
+              
+              <Box>
+                <Typography variant="h4" color="success.main" sx={{ fontWeight: 700 }}>
+                  {dataProfile.data_quality_score.toFixed(1)}%
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Data Quality</Typography>
+              </Box>
+            </Box>
 
-      <UploadButton
-        variant="contained"
-        disabled={!file || uploadStatus === 'uploading'}
-        onClick={upload}
-        startIcon={uploadStatus === 'uploading' ? undefined : <CloudUploadIcon />}
-        fullWidth
-        size="large"
-      >
-        {uploadStatus === 'uploading' ? `${t('uploading')} ${progress}%` : t('upload_file')}
-      </UploadButton>
-    </Stack>
+            <Divider />
+
+            <Box>
+              <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                📈 Column Statistics
+              </Typography>
+              <Stack direction="row" spacing={2} flexWrap="wrap">
+                <Chip
+                  label={`${dataProfile.statistical_summary.numeric_columns.length} Numeric`}
+                  color="primary"
+                  variant="outlined"
+                />
+                <Chip
+                  label={`${dataProfile.statistical_summary.categorical_columns.length} Categorical`}
+                  color="secondary"
+                  variant="outlined"
+                />
+                <Chip
+                  label={`${dataProfile.statistical_summary.total_missing} Missing Values`}
+                  color={dataProfile.statistical_summary.total_missing > 0 ? "warning" : "success"}
+                  variant="outlined"
+                />
+              </Stack>
+            </Box>
+
+            {dataProfile.recommendations.length > 0 && (
+              <Box>
+                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                  💡 Recommendations
+                </Typography>
+                <Stack spacing={1}>
+                  {dataProfile.recommendations.slice(0, 3).map((recommendation, index) => (
+                    <Alert key={index} severity="info" sx={{ py: 0.5 }}>
+                      <Typography variant="body2">{recommendation}</Typography>
+                    </Alert>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+          </Stack>
+        </Paper>
+      )}
+    </Box>
   );
 };

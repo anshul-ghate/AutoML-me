@@ -21,7 +21,9 @@ import {
   Card,
   CardContent,
   LinearProgress,
-  Grid
+  Grid,
+  Fab,
+  Drawer
 } from '@mui/material';
 import {
   CloudUpload as CloudUploadIcon,
@@ -37,15 +39,18 @@ import {
   Psychology as PsychologyIcon,
   Help as HelpIcon,
   Brightness4 as DarkModeIcon,
+  Brightness7 as Brightness7Icon,
   TrendingUp as TrendingUpIcon,
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  Chat as ChatIcon
 } from '@mui/icons-material';
 import { useTheme, alpha } from '@mui/material/styles';
 
 // Import existing components
 import EnhancedTrainingPanel from './components/Training/EnhancedTrainingPanel';
+import { FileUpload } from './components/Upload/FileUpload';
 
 // User and project interfaces
 interface User {
@@ -383,13 +388,16 @@ const DashboardPanel: React.FC<{ projects: Project[] }> = ({ projects }) => {
 interface AutoMLApplicationProps {
   user: User;
   onLogout: () => void;
+  darkMode: boolean;
+  onToggleDarkMode: () => void;
 }
 
-const AutoMLApplication: React.FC<AutoMLApplicationProps> = ({ user, onLogout }) => {
+const AutoMLApplication: React.FC<AutoMLApplicationProps> = ({ user, onLogout, darkMode, onToggleDarkMode }) => {
   const theme = useTheme();
   const [currentTab, setCurrentTab] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notificationAnchor, setNotificationAnchor] = useState<null | HTMLElement>(null);
+  const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
   
   const [projects] = useState<Project[]>([
     {
@@ -465,10 +473,15 @@ const AutoMLApplication: React.FC<AutoMLApplicationProps> = ({ user, onLogout })
         return <DashboardPanel projects={projects} />;
       
       case 1:
-      case 4: // Both Data Upload and Model Training use the same enhanced panel
         return (
           <Box sx={{ py: 2 }}>
-            <EnhancedTrainingPanel />
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
+              📁 Data Upload & Analysis
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+              Upload your dataset and get comprehensive analysis with data quality insights.
+            </Typography>
+            <FileUpload />
           </Box>
         );
       
@@ -501,6 +514,13 @@ const AutoMLApplication: React.FC<AutoMLApplicationProps> = ({ user, onLogout })
                 <Chip label="🚀 Deployment" />
               </Stack>
             </Paper>
+          </Box>
+        );
+      
+      case 4:
+        return (
+          <Box sx={{ py: 2 }}>
+            <EnhancedTrainingPanel />
           </Box>
         );
       
@@ -575,6 +595,11 @@ const AutoMLApplication: React.FC<AutoMLApplicationProps> = ({ user, onLogout })
               <HelpIcon />
             </IconButton>
 
+            {/* Dark Mode Toggle */}
+            <IconButton color="inherit" onClick={onToggleDarkMode}>
+              {darkMode ? <Brightness7Icon /> : <DarkModeIcon />}
+            </IconButton>
+
             <Button
               color="inherit"
               startIcon={
@@ -603,6 +628,39 @@ const AutoMLApplication: React.FC<AutoMLApplicationProps> = ({ user, onLogout })
       >
         {renderTabContent()}
       </Container>
+
+      {/* Chat FAB - Always visible */}
+      <Fab
+        color="secondary"
+        sx={{
+          position: 'fixed',
+          bottom: 90,
+          right: 24,
+          zIndex: 1000
+        }}
+        onClick={() => setChatDrawerOpen(true)}
+      >
+        <ChatIcon />
+      </Fab>
+
+      {/* AI Chat Drawer */}
+      <Drawer
+        anchor="right"
+        open={chatDrawerOpen}
+        onClose={() => setChatDrawerOpen(false)}
+        PaperProps={{ sx: { width: 400 } }}
+      >
+        <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Typography variant="h6" gutterBottom>
+            🤖 AI Assistant Chat
+          </Typography>
+          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography color="text.secondary">
+              Chat interface coming soon...
+            </Typography>
+          </Box>
+        </Box>
+      </Drawer>
 
       {/* User Menu */}
       <Menu

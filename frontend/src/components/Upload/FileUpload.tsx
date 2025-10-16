@@ -11,14 +11,14 @@ import {
   Paper,
   Fade,
   CircularProgress,
-  Divider 
+  Divider
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
-import api from '../../services/api';
+import { apiEndpoints } from '../../services/api';
 
 const DropZone = styled(Paper)<{ isDragActive: boolean }>(({ theme, isDragActive }) => ({
   padding: theme.spacing(6),
@@ -71,7 +71,20 @@ export const FileUpload: React.FC = () => {
   const [analyzeError, setAnalyzeError] = useState('');
   const [dataProfile, setDataProfile] = useState<DataProfile | null>(null);
 
-  const onDrop = useCallback((accepted: File[]) => {
+  const onDrop = useCallback((accepted: File[], rejected: any[]) => {
+    // Handle rejected files
+    if (rejected.length > 0) {
+      const rejection = rejected[0];
+      if (rejection.errors[0]?.code === 'file-too-large') {
+        setUploadMessage('File size exceeds 50MB limit');
+        setUploadStatus('error');
+      } else if (rejection.errors[0]?.code === 'file-invalid-type') {
+        setUploadMessage('Only CSV files are supported');
+        setUploadStatus('error');
+      }
+      return;
+    }
+
     if (accepted.length > 0) {
       const selectedFile = accepted[0];
       setFile(selectedFile);
@@ -79,6 +92,7 @@ export const FileUpload: React.FC = () => {
       setProgress(0);
       setAnalyzeError('');
       setDataProfile(null);
+      setUploadMessage('');
     }
   }, []);
 
@@ -96,34 +110,38 @@ export const FileUpload: React.FC = () => {
 
     setUploadStatus('uploading');
     setProgress(0);
+    setUploadMessage('');
 
     try {
-      const form = new FormData();
-      form.append('file', file);
-
-      await api.post('/upload/structured', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (evt) => {
-          if (evt.total) {
-            const percentCompleted = Math.round((evt.loaded * 100) / evt.total);
-            setProgress(percentCompleted);
-          }
-        }
-      });
-
+      // Use the correct API endpoint for file upload
+      const response = await apiEndpoints.upload.structured(file);
+      
+      setProgress(100);
       setUploadStatus('success');
-      setUploadMessage(`${file.name} uploaded successfully`);
+      setUploadMessage(response.data?.message || `${file.name} uploaded successfully`);
 
+      // Clear success message after 3 seconds
       setTimeout(() => {
-        setUploadStatus('idle');
-        setUploadMessage('');
-        setProgress(0);
+        if (uploadStatus === 'success') {
+          setUploadStatus('idle');
+          setUploadMessage('');
+          setProgress(0);
+        }
       }, 3000);
 
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || 'Upload failed';
+      console.error('Upload failed:', error);
+      setProgress(0);
       setUploadStatus('error');
-      setUploadMessage(errorMessage);
+      setUploadMessage(error.message || 'Upload failed - please try again');
+
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        if (uploadStatus === 'error') {
+          setUploadStatus('idle');
+          setUploadMessage('');
+        }
+      }, 5000);
     }
   };
 
@@ -137,25 +155,32 @@ export const FileUpload: React.FC = () => {
     setAnalyzeError('');
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await api.post('/api/training/analyze', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 60000
-      });
+      const response = await apiEndpoints.training.analyze(file);
 
       if (!response.data?.profile) {
-        throw new Error('Invalid response from analysis endpoint');
+        throw new Error('Invalid response from analysis endpoint - missing profile data');
       }
 
       setDataProfile(response.data.profile);
       
     } catch (error: any) {
       console.error('Analysis failed:', error);
-      const errorMessage = error.response?.data?.detail ||
-        error.message ||
-        'Failed to analyze dataset. Please check your file format.';
+      
+      // Provide specific error messages based on error type
+      let errorMessage = 'Failed to analyze dataset';
+      
+      if (error.message.includes('Cannot connect to server')) {
+        errorMessage = 'Cannot connect to backend server. Please ensure the server is running on port 8301';
+      } else if (error.message.includes('API endpoint not found')) {
+        errorMessage = 'Analysis endpoint not found. Please check if the backend API is properly configured';
+      } else if (error.response?.status === 422) {
+        errorMessage = 'Invalid file format. Please ensure you uploaded a valid CSV file';
+      } else if (error.response?.status === 413) {
+        errorMessage = 'File size too large. Please upload a CSV file smaller than 50MB';
+      } else {
+        errorMessage = error.message || 'Analysis failed - please check your file format and try again';
+      }
+      
       setAnalyzeError(errorMessage);
     } finally {
       setAnalyzing(false);
@@ -226,6 +251,11 @@ export const FileUpload: React.FC = () => {
               icon={<CheckCircleIcon />}
               severity="success"
               sx={{ borderRadius: 2, mt: 2 }}
+              onClose={() => {
+                setUploadStatus('idle');
+                setUploadMessage('');
+                setProgress(0);
+              }}
             >
               {uploadMessage}
             </Alert>
@@ -233,7 +263,14 @@ export const FileUpload: React.FC = () => {
         )}
 
         {uploadStatus === 'error' && (
-          <Alert severity="error" sx={{ mt: 2 }}>
+          <Alert 
+            severity="error" 
+            sx={{ mt: 2 }}
+            onClose={() => {
+              setUploadStatus('idle');
+              setUploadMessage('');
+            }}
+          >
             {uploadMessage}
           </Alert>
         )}
@@ -272,7 +309,11 @@ export const FileUpload: React.FC = () => {
           </Button>
 
           {analyzeError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert 
+              severity="error" 
+              sx={{ mb: 2 }}
+              onClose={() => setAnalyzeError('')}
+            >
               {analyzeError}
             </Alert>
           )}

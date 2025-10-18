@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   backend:
     build:
@@ -5,18 +7,43 @@ services:
       dockerfile: Dockerfile
     container_name: automl-app-backend
     ports:
-      - "8050:8050" 
+      - "8050:8050"
     volumes:
-      - .:/app
       - ./data:/app/data
       - ./uploads:/app/uploads
-    env_file:
-      - .env
+      - ./models:/app/models
     environment:
+      - PYTHONPATH=/app
       - PORT=8050
-      - JWT_SECRET_KEY=your-very-secret-key-change-in-production
-      - OPENROUTER_API_KEY=your_openrouter_api_key
-    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8050
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-very-secret-key-change-in-production}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-your_openrouter_api_key}
+      - ENV=development
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8050 --reload
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8050/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - automl-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_BASE_URL=http://localhost:8050
+    container_name: automl-app-frontend
+    ports:
+      - "8301:80"
+    environment:
+      - REACT_APP_API_BASE_URL=http://localhost:8050
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - automl-network
 

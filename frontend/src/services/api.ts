@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // Create axios instance with default configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8301',
+  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8050',
   timeout: 120000, // 2 minutes for long-running operations
   headers: {
     'Content-Type': 'application/json',
@@ -56,7 +56,7 @@ api.interceptors.response.use(
       error.message = 'Request timeout - operation took too long';
     } else if (error.code === 'ERR_NETWORK' || !error.response) {
       // Network error - provide clear guidance
-      error.message = 'Cannot connect to server. Please ensure the backend is running on port 8301';
+      error.message = 'Cannot connect to server. Please ensure the backend is running on port 8050';
     } else if (error.response?.status === 404) {
       // Not found
       error.message = 'API endpoint not found. Please check if the backend server is properly configured.';
@@ -100,6 +100,7 @@ export const apiEndpoints = {
         timeout: 60000,
       });
     },
+    
     featureEngineer: (file: File, targetColumn: string) => {
       const formData = new FormData();
       formData.append('file', file);
@@ -112,6 +113,7 @@ export const apiEndpoints = {
         }
       );
     },
+    
     train: (config: {
       file: File;
       targetColumn: string;
@@ -125,22 +127,27 @@ export const apiEndpoints = {
       formData.append('test_size', config.testSize.toString());
       formData.append('cv_folds', config.cvFolds.toString());
       formData.append('auto_feature_engineering', config.autoFeatureEngineering.toString());
+      
       return api.post('/api/training/train', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 300000, // 5 minutes for training
       });
     },
+    
     predict: (sessionId: string, features: Record<string, number>) =>
       api.post('/api/training/predict', {
         session_id: sessionId,
         features,
       }),
+    
     evaluate: (sessionId: string) =>
       api.get(`/api/training/evaluate/${sessionId}`),
+    
     exportModel: (sessionId: string) =>
       api.get(`/api/training/export/model/${sessionId}`, {
         responseType: 'blob',
       }),
+    
     getProgress: (sessionId: string) =>
       api.get(`/api/training/progress/${sessionId}`),
   },

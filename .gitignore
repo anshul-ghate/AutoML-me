@@ -12,3 +12,5 @@ build/
 *.egg-info/
 docker-compose.override.yml
 .vscode/
+*.pkl
+*.json
